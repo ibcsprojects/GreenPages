@@ -193,13 +193,18 @@ function detectBulletSprawl(doc: DocModel): Flag[] {
 // ---------------------------------------------------------------------------
 // 6. Verbose paragraphs → condensed text (offline; Gemini upgrades the suggestion).
 // ---------------------------------------------------------------------------
-function detectVerbose(doc: DocModel): Flag[] {
+function detectVerbose(doc: DocModel, aiRewrite: boolean): Flag[] {
   const flags: Flag[] = []
   for (const p of doc.paragraphs) {
     if (p.kind !== 'normal') continue
     const text = paragraphText(p)
     if (!looksVerbose(text)) continue
     const suggestion = condenseLocally(text)
+    const localHelps = suggestion.length < text.length
+    // Offline we can only show a useful card when the local shortener actually trims
+    // something. With AI on, keep the flag even if the local pass is a no-op — the
+    // backend rewrites it with Gemini and fills in a shorter suggestion.
+    if (!localHelps && !aiRewrite) continue
     const range: Range = { start: p.start!, end: p.end! }
     flags.push({
       id: fid('verbose'),
@@ -208,9 +213,9 @@ function detectVerbose(doc: DocModel): Flag[] {
       range,
       title: 'Wordy paragraph',
       explanation:
-        'This paragraph repeats itself and uses padded phrases. Tightening it removes lines without losing meaning — and you can edit the suggestion before applying.',
+        'This paragraph is long and padded. Tightening it removes lines without losing meaning — and you can edit the suggestion before applying.',
       before: truncate(text, 90),
-      after: truncate(suggestion, 90),
+      after: localHelps ? truncate(suggestion, 90) : '✨ AI will rewrite this to be shorter',
       impact: { paper: charsToPaper(text.length - suggestion.length, doc), ink: 0 },
       action: { kind: 'replaceText', range, text: suggestion },
       editableSuggestion: suggestion,
@@ -224,8 +229,14 @@ function truncate(s: string, n = 60): string {
   return t.length > n ? t.slice(0, n - 1) + '…' : t
 }
 
+export interface AnalyzeDocOptions {
+  /** When true, also flag long paragraphs the offline shortener can't trim, so the
+   *  backend can rewrite them with Gemini. Set by the AI-backed endpoint. */
+  aiRewrite?: boolean
+}
+
 /** Run every detector and return flags ordered by document position. */
-export function analyzeDoc(doc: DocModel): Flag[] {
+export function analyzeDoc(doc: DocModel, opts: AnalyzeDocOptions = {}): Flag[] {
   _fid = 0
   const flags = [
     ...detectHighlights(doc),
@@ -233,7 +244,7 @@ export function analyzeDoc(doc: DocModel): Flag[] {
     ...detectBlankRuns(doc),
     ...detectPageBreaks(doc),
     ...detectBulletSprawl(doc),
-    ...detectVerbose(doc),
+    ...detectVerbose(doc, opts.aiRewrite ?? false),
   ]
   return flags.sort((a, b) => a.range.start - b.range.start)
 }

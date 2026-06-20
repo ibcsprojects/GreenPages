@@ -58,21 +58,21 @@ export function showPrintModal(summary: PrintSummary): Promise<PrintModalResult>
     const heavy = summary.pages >= 10
     const tips: string[] = []
     if (summary.settings.duplexReminder)
-      tips.push('🔁 Print double-sided to halve your paper use.')
-    tips.push(`📄 Confirm paper size is ${summary.settings.paperSize}.`)
-    tips.push('📍 Check you’re sending to the right printer / location.')
+      tips.push('Print double-sided to halve your paper use.')
+    tips.push('Be mindful of your paper size — pick the smallest that fits so you don’t waste a larger sheet.')
+    tips.push('Check you’re sending to the right printer / location.')
 
     const wrap = document.createElement('div')
     wrap.className = 'backdrop'
     wrap.innerHTML = `
       <div class="modal" role="dialog" aria-modal="true" aria-label="GreenPages print check">
         <div class="head">
-          <h1>🌿 GreenPages — before you print</h1>
+          <h1>Wait! Before you print...</h1>
           <p>A quick eco check so you don’t waste paper or ink.</p>
         </div>
         <div class="body">
           <div class="stat"><b>${summary.pages}</b><span>estimated page${summary.pages === 1 ? '' : 's'}</span></div>
-          ${heavy ? `<div class="warn">⚠️ This is a large print job (≥ 10 pages). Are you sure you need every page on paper?</div>` : ''}
+          ${heavy ? `<div class="warn">⚠️ This is a large print job. Are you sure you need every page on paper?</div>` : ''}
           ${
             summary.unresolved.length
               ? `<div>You still have <b>${summary.unresolved.length}</b> unresolved eco-flag${summary.unresolved.length === 1 ? '' : 's'}:</div>

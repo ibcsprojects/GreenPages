@@ -13,8 +13,10 @@ shortener if anything fails.
 1. Get a free key at <https://aistudio.google.com/app/apikey>.
 2. Copy `.env.example` → `.env` and set `GEMINI_API_KEY=...` (for local dev), **or** set it
    as an env var in your Vercel project (step 2).
-3. In the side panel → **Settings** → enable **Use AI backend** and paste your backend URL
-   (e.g. `https://your-app.vercel.app`, or `http://localhost:3000` with `vercel dev`).
+3. Set `VITE_BACKEND_URL` (in `.env` before `npm run build`) to your deployed backend's
+   base URL — e.g. `https://your-app.vercel.app`, or `http://localhost:3000` with
+   `vercel dev`. This is **baked into the extension at build time**, so AI is on by default
+   and there's nothing to toggle in the side panel. Leave it blank to stay fully offline.
 
 Without a key the endpoints still work and return `source: "local"`.
 
@@ -85,7 +87,7 @@ in `buildRequests`. Re-reading after every edit avoids index-shift bookkeeping.
 
 - Offline: `npm run build`, load `dist/`, open a Doc — 6 demo flags, Apply works, Ctrl+P
   shows the modal.
-- With Vercel + Gemini: enable **Use AI backend**, set the URL, re-scan — verbose
-  suggestions become AI-written (network tab shows `/api/analyze`).
+- With Vercel + Gemini: build with `VITE_BACKEND_URL` set, re-scan — wordy paragraphs are
+  flagged and their suggestions are AI-written (network tab shows `/api/analyze`).
 - With Docs API: open your own wasteful doc — flags now reflect *your* content and Apply
   edits the live document.

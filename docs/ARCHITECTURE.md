@@ -72,5 +72,5 @@ Going live = three independent swaps, none of which touch the UI:
    `DocModel` (the shapes already align: paragraphs → text runs → `textStyle`).
 2. **Write** edits → swap `MockDocsBackend` for `GoogleDocsBackend` (request payloads are
    already written in `buildRequests`; only OAuth + index translation remain).
-3. **AI** → flip `Settings.useAI` and set `backendUrl`; `analyzer/client.ts` routes to the
-   Gemini-backed endpoints.
+3. **AI** → on by default; build with `VITE_BACKEND_URL` set (baked into `DEFAULT_SETTINGS`)
+   and `analyzer/client.ts` routes to the Gemini-backed endpoints.

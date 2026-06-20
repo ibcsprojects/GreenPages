@@ -43,6 +43,9 @@ export function looksVerbose(text: string): boolean {
   const words = text.trim().split(/\s+/).filter(Boolean)
   if (words.length < 25) return false
   const condensed = condenseLocally(text)
-  // Worth flagging only if we can trim a meaningful chunk.
-  return condensed.length <= text.length * 0.9
+  // Worth flagging if our offline pass can already trim a meaningful chunk...
+  if (condensed.length <= text.length * 0.9) return true
+  // ...or if the paragraph is simply long and dense: the AI rewrite can tighten
+  // these even when our fixed phrase list doesn't match anything.
+  return words.length >= 45
 }

@@ -5,18 +5,20 @@ import type { DocModel } from './docModel'
 import type { Flag } from './analyzer/types'
 
 export type Settings = {
-  paperSize: 'Letter' | 'A4'
   duplexReminder: boolean
-  /** Use the Gemini backend when configured, else local rules. */
+  /**
+   * Use the Gemini backend to read paragraphs and rewrite wordy ones.
+   * On by default — the backend URL is baked in at build time (VITE_BACKEND_URL),
+   * so AI just works without the user touching settings.
+   */
   useAI: boolean
   backendUrl: string
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  paperSize: 'Letter',
   duplexReminder: true,
-  useAI: false,
-  backendUrl: '',
+  useAI: true,
+  backendUrl: import.meta.env.VITE_BACKEND_URL ?? '',
 }
 
 export type Msg =

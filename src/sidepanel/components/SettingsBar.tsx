@@ -18,17 +18,6 @@ export function SettingsBar() {
       {open && (
         <div className="mt-2 space-y-2">
           <label className="flex items-center justify-between">
-            Paper size
-            <select
-              value={settings.paperSize}
-              onChange={(e) => update({ paperSize: e.target.value as 'Letter' | 'A4' })}
-              className="rounded border border-leaf-200 px-1.5 py-0.5"
-            >
-              <option>Letter</option>
-              <option>A4</option>
-            </select>
-          </label>
-          <label className="flex items-center justify-between">
             Double-sided reminder
             <input
               type="checkbox"
@@ -37,24 +26,10 @@ export function SettingsBar() {
               className="accent-leaf-600"
             />
           </label>
-          <label className="flex items-center justify-between">
-            Use AI backend
-            <input
-              type="checkbox"
-              checked={settings.useAI}
-              onChange={(e) => update({ useAI: e.target.checked })}
-              className="accent-leaf-600"
-            />
-          </label>
-          {settings.useAI && (
-            <input
-              type="url"
-              placeholder="https://your-app.vercel.app"
-              value={settings.backendUrl}
-              onChange={(e) => update({ backendUrl: e.target.value })}
-              className="w-full rounded border border-leaf-200 px-1.5 py-1"
-            />
-          )}
+          <p className="rounded-lg bg-leaf-50 px-2 py-1.5 text-[11px] leading-relaxed text-leaf-800">
+            ✨ AI is on. GreenPages reads your paragraphs and rewrites wordy ones to save paper —
+            you’ll see those flagged in the list above.
+          </p>
         </div>
       )}
     </div>

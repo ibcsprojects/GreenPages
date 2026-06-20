@@ -4,7 +4,6 @@ import { EcoScore } from './EcoScore'
 export function Header() {
   const reanalyze = useStore((s) => s.reanalyze)
   const loading = useStore((s) => s.loading)
-  const doc = useStore((s) => s.doc)
 
   return (
     <header className="sticky top-0 z-10 border-b border-leaf-100 bg-leaf-50/95 px-3 pb-2 pt-3 backdrop-blur">
@@ -23,12 +22,6 @@ export function Header() {
         </button>
       </div>
       <EcoScore />
-      {doc && (
-        <p className="mt-2 rounded-lg bg-amber-50 px-2 py-1 text-[11px] leading-snug text-amber-800">
-          Analyzing <b>demo doc</b> “{doc.title}”. Connect the Google Docs API (see
-          docs/SETUP.md) to scan your live document.
-        </p>
-      )}
     </header>
   )
 }
