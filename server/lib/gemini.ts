@@ -1,7 +1,7 @@
 // Thin Gemini 1.5 Flash client (Google AI Studio free tier). Returns null when no key is
 // configured so callers transparently fall back to the offline shortener.
 
-const MODEL = 'gemini-2.0-flash'
+const MODEL = 'gemini-2.5-flash'
 
 export function hasGeminiKey(): boolean {
   return Boolean(process.env.GEMINI_API_KEY)
