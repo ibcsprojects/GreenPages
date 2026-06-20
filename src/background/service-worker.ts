@@ -36,7 +36,14 @@ const state: State = {
 
 async function loadSettings() {
   const saved = await chrome.storage.local.get('settings')
-  if (saved.settings) state.settings = { ...DEFAULT_SETTINGS, ...saved.settings }
+  if (saved.settings) {
+    state.settings = { ...DEFAULT_SETTINGS, ...saved.settings }
+    // AI on/off and the backend URL are build-time concerns (baked from VITE_BACKEND_URL),
+    // not user toggles. Always take them from the current defaults so stale stored settings
+    // (e.g. an old useAI:false or empty backendUrl) can't silently disable AI after an update.
+    state.settings.useAI = DEFAULT_SETTINGS.useAI
+    state.settings.backendUrl = DEFAULT_SETTINGS.backendUrl
+  }
 }
 
 // One-shot: if the active tab is a Google Doc, load it via the Docs API (prompting for

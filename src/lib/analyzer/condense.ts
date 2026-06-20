@@ -47,5 +47,5 @@ export function looksVerbose(text: string): boolean {
   if (condensed.length <= text.length * 0.9) return true
   // ...or if the paragraph is simply long and dense: the AI rewrite can tighten
   // these even when our fixed phrase list doesn't match anything.
-  return words.length >= 45
+  return words.length >= 35
 }
