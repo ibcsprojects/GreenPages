@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useStore } from './state/store'
 import { Header } from './components/Header'
+import { Banner } from './components/Banner'
 import { FlagList } from './components/FlagList'
 import { SettingsBar } from './components/SettingsBar'
 
@@ -14,6 +15,7 @@ export default function App() {
   return (
     <div className="flex h-full flex-col bg-leaf-50">
       <Header />
+      <Banner />
       <main className="flex-1 overflow-y-auto">
         <FlagList />
       </main>

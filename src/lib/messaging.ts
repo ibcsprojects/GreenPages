@@ -24,7 +24,19 @@ export const DEFAULT_SETTINGS: Settings = {
 export type Msg =
   // side panel ⇄ worker
   | { type: 'GET_STATE' }
-  | { type: 'STATE'; doc: DocModel; flags: Flag[]; dismissed: string[]; settings: Settings }
+  | {
+      type: 'STATE'
+      doc: DocModel
+      flags: Flag[]
+      dismissed: string[]
+      settings: Settings
+      /** Whether we're analyzing the user's live Google Doc or the offline sample. */
+      docSource?: 'live' | 'sample'
+      /** A user-facing heads-up, e.g. "couldn't open your doc, showing a sample". */
+      notice?: string
+    }
+  /** A handler threw — surfaced to the panel instead of vanishing into a dead port. */
+  | { type: 'ERROR'; message: string }
   | { type: 'REANALYZE' }
   | { type: 'APPLY_FLAG'; flagId: string; overrideText?: string }
   | { type: 'DISMISS_FLAG'; flagId: string }
@@ -85,7 +97,17 @@ export function onMessage(
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     const result = handler(msg as Msg, sender)
     if (result instanceof Promise) {
-      result.then((r) => sendResponse(r))
+      // A rejected handler must still answer the port, or the panel's `await sendMessage`
+      // hangs/rejects with "message port closed" and the failure is invisible. Convert any
+      // throw into an ERROR response the panel can show.
+      result.then(
+        (r) => sendResponse(r),
+        (err) =>
+          sendResponse({
+            type: 'ERROR',
+            message: String((err as Error)?.message ?? err),
+          } satisfies Msg),
+      )
       return true // keep the channel open for the async response
     }
     return false

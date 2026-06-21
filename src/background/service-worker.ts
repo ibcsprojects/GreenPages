@@ -26,6 +26,11 @@ interface State {
 // Google Doc, ensureDoc() swaps in the live document and the Docs API backend.
 let backend: EditBackend = new MockDocsBackend()
 let liveLoaded = false
+// Whether the current analysis reflects the user's live doc or the bundled sample, plus a
+// heads-up to show when we wanted the live doc but couldn't open it (so a failed sign-in /
+// OAuth mismatch / Docs error is visible instead of silently analyzing the sample).
+let docSource: 'live' | 'sample' = 'sample'
+let loadNotice: string | null = null
 
 const state: State = {
   doc: SAMPLE_DOC,
@@ -51,13 +56,26 @@ async function loadSettings() {
 // offline sample in place so the product always works.
 async function ensureDoc() {
   if (liveLoaded) return
+  const docId = await getActiveGoogleDocId()
+  if (!docId) {
+    // Not on a Google Doc tab — the sample is the intended experience, no warning.
+    docSource = 'sample'
+    loadNotice = null
+    return
+  }
   try {
-    const docId = await getActiveGoogleDocId()
-    if (!docId) return
     state.doc = await fetchGoogleDoc(docId)
     backend = new GoogleDocsBackend(docId)
     liveLoaded = true
+    docSource = 'live'
+    loadNotice = null
   } catch (err) {
+    // The tab IS a Google Doc but we couldn't open it (declined sign-in, an OAuth client
+    // that doesn't match this extension's id, a Docs API error). Stay on the sample so the
+    // product still works, but say so — otherwise "Apply" edits an in-memory sample and the
+    // user's real document never changes, which looks like a broken feature.
+    docSource = 'sample'
+    loadNotice = `Couldn't open your Google Doc — showing a sample instead. Edits won't reach your document. (${(err as Error)?.message ?? err})`
     console.warn('[GreenPages] Docs API load failed, using sample doc:', err)
   }
 }
@@ -81,6 +99,8 @@ function stateMessage(): Msg {
     flags: visibleFlags(),
     dismissed: [...state.dismissed],
     settings: state.settings,
+    docSource,
+    ...(loadNotice ? { notice: loadNotice } : {}),
   }
 }
 

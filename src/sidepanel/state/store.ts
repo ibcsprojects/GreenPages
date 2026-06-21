@@ -8,6 +8,12 @@ interface PanelState {
   flags: Flag[]
   settings: Settings
   loading: boolean
+  /** Whether the panel is analyzing the live doc or the offline sample. */
+  docSource: 'live' | 'sample' | null
+  /** A heads-up from the worker (e.g. couldn't open the live doc), or null. */
+  notice: string | null
+  /** The last operation's error message, shown as a banner until the next action. */
+  error: string | null
   /** Per-flag busy state so a card can show a spinner while applying. */
   busy: Record<string, boolean>
   init: () => Promise<void>
@@ -19,7 +25,25 @@ interface PanelState {
 }
 
 function applyState(set: (p: Partial<PanelState>) => void, msg: Extract<Msg, { type: 'STATE' }>) {
-  set({ doc: msg.doc, flags: msg.flags, settings: msg.settings, loading: false })
+  set({
+    doc: msg.doc,
+    flags: msg.flags,
+    settings: msg.settings,
+    docSource: msg.docSource ?? null,
+    notice: msg.notice ?? null,
+    error: null,
+    loading: false,
+  })
+}
+
+/**
+ * Apply a worker response. The worker answers either with fresh STATE or, when a handler
+ * threw, an ERROR — surface that as a banner instead of letting `applyState` read `.doc`
+ * off an error message and crash the panel.
+ */
+function handleResponse(set: (p: Partial<PanelState>) => void, msg: Msg) {
+  if (msg.type === 'ERROR') set({ error: msg.message, loading: false })
+  else if (msg.type === 'STATE') applyState(set, msg)
 }
 
 export const useStore = create<PanelState>((set, get) => ({
@@ -27,39 +51,53 @@ export const useStore = create<PanelState>((set, get) => ({
   flags: [],
   settings: { ...DEFAULT_SETTINGS },
   loading: true,
+  docSource: null,
+  notice: null,
+  error: null,
   busy: {},
 
   init: async () => {
-    set({ loading: true })
-    const msg = await sendMessage<Extract<Msg, { type: 'STATE' }>>({ type: 'GET_STATE' })
-    applyState(set, msg)
+    set({ loading: true, error: null })
+    try {
+      handleResponse(set, await sendMessage<Msg>({ type: 'GET_STATE' }))
+    } catch (err) {
+      set({ error: errMessage(err), loading: false })
+    }
   },
 
   reanalyze: async () => {
-    set({ loading: true })
-    const msg = await sendMessage<Extract<Msg, { type: 'STATE' }>>({ type: 'REANALYZE' })
-    applyState(set, msg)
+    set({ loading: true, error: null })
+    try {
+      handleResponse(set, await sendMessage<Msg>({ type: 'REANALYZE' }))
+    } catch (err) {
+      set({ error: errMessage(err), loading: false })
+    }
   },
 
   apply: async (flagId, overrideText) => {
-    set({ busy: { ...get().busy, [flagId]: true } })
-    const msg = await sendMessage<Extract<Msg, { type: 'STATE' }>>({
-      type: 'APPLY_FLAG',
-      flagId,
-      overrideText,
-    })
-    const busy = { ...get().busy }
-    delete busy[flagId]
-    applyState(set, msg)
-    set({ busy })
+    set({ busy: { ...get().busy, [flagId]: true }, error: null })
+    try {
+      handleResponse(
+        set,
+        await sendMessage<Msg>({ type: 'APPLY_FLAG', flagId, overrideText }),
+      )
+    } catch (err) {
+      // A rejected port (e.g. the worker died mid-edit) must still clear the spinner and
+      // tell the user, not leave the card stuck on "Applying…".
+      set({ error: errMessage(err) })
+    } finally {
+      const busy = { ...get().busy }
+      delete busy[flagId]
+      set({ busy })
+    }
   },
 
   dismiss: async (flagId) => {
-    const msg = await sendMessage<Extract<Msg, { type: 'STATE' }>>({
-      type: 'DISMISS_FLAG',
-      flagId,
-    })
-    applyState(set, msg)
+    try {
+      handleResponse(set, await sendMessage<Msg>({ type: 'DISMISS_FLAG', flagId }))
+    } catch (err) {
+      set({ error: errMessage(err) })
+    }
   },
 
   // Fire-and-forget: tells the worker to scroll the live doc; no state change here.
@@ -68,10 +106,14 @@ export const useStore = create<PanelState>((set, get) => ({
   },
 
   updateSettings: async (s) => {
-    const msg = await sendMessage<Extract<Msg, { type: 'STATE' }>>({
-      type: 'UPDATE_SETTINGS',
-      settings: s,
-    })
-    applyState(set, msg)
+    try {
+      handleResponse(set, await sendMessage<Msg>({ type: 'UPDATE_SETTINGS', settings: s }))
+    } catch (err) {
+      set({ error: errMessage(err) })
+    }
   },
 }))
+
+function errMessage(err: unknown): string {
+  return String((err as Error)?.message ?? err)
+}
