@@ -133,7 +133,10 @@ interface ApiDimension {
 }
 interface ApiInlineObject {
   inlineObjectProperties?: {
-    embeddedObject?: { size?: { height?: ApiDimension; width?: ApiDimension } }
+    embeddedObject?: {
+      size?: { height?: ApiDimension; width?: ApiDimension }
+      imageProperties?: { contentUri?: string; sourceUri?: string }
+    }
   }
 }
 interface ApiParagraph {
@@ -234,10 +237,14 @@ function mapImages(
   for (const e of elements) {
     const objectId = e.inlineObjectElement?.inlineObjectId
     if (!objectId) continue
-    const size = inlineObjects[objectId]?.inlineObjectProperties?.embeddedObject?.size
+    const embedded = inlineObjects[objectId]?.inlineObjectProperties?.embeddedObject
+    const size = embedded?.size
     const widthPt = size?.width?.magnitude
     const heightPt = size?.height?.magnitude
-    if (widthPt && heightPt) images.push({ objectId, widthPt, heightPt })
+    // sourceUri (the original public URL) re-inserts most reliably; contentUri is a
+    // short-lived, account-tagged fallback for uploaded/pasted images.
+    const uri = embedded?.imageProperties?.sourceUri || embedded?.imageProperties?.contentUri
+    if (widthPt && heightPt) images.push({ objectId, widthPt, heightPt, docStart: e.startIndex, uri })
   }
   return images
 }

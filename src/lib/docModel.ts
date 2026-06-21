@@ -32,6 +32,12 @@ export interface DocImage {
   widthPt: number
   /** Rendered height in points. */
   heightPt: number
+  /** Docs index of the inline-image element (one index wide). Lets the write path delete
+   *  the image and re-insert it at a new size — the API has no in-place resize request. */
+  docStart?: number
+  /** Image source URL (sourceUri, else the short-lived contentUri). Required to re-insert
+   *  at a smaller size; absent for some uploaded/pasted images, which then can't be resized. */
+  uri?: string
 }
 
 export interface Paragraph {

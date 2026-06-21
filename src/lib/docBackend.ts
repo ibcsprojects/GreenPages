@@ -149,7 +149,52 @@ export class GoogleDocsBackend implements EditBackend {
     // A real table can't be built in one batch: its cell indices don't exist until the
     // table is created, so it needs its own read-back-and-fill flow.
     if (action.kind === 'bulletsToTable') return this.applyBulletsToTable(doc, action)
+    // The Docs API has no in-place image resize, so this deletes and re-inserts the image
+    // at the smaller size — and reports clearly when it can't (no usable source URL).
+    if (action.kind === 'resizeImage') return this.applyResizeImage(doc, action)
     await pushBatchUpdate(this.documentId, buildRequests(doc, action))
+    return fetchGoogleDoc(this.documentId)
+  }
+
+  /**
+   * Resize an inline image by deleting it and re-inserting it at the scaled size, since the
+   * Docs API exposes no request to change an existing image's dimensions. Needs the image's
+   * index and a fetchable source URL, both captured by the read path. Throws a clear,
+   * user-facing message when the image can't be resized (e.g. an uploaded image whose only
+   * URL is a private contentUri the insert step can't fetch).
+   */
+  private async applyResizeImage(
+    doc: DocModel,
+    action: Extract<EditAction, { kind: 'resizeImage' }>,
+  ): Promise<DocModel> {
+    const img = doc.paragraphs
+      .flatMap((p) => p.images ?? [])
+      .find((i) => i.objectId === action.objectId && action.objectId != null)
+    if (!img || img.docStart == null) {
+      throw new Error("Couldn't locate that image in the document to resize it.")
+    }
+    if (!img.uri) {
+      throw new Error(
+        "This image has no shareable source URL, so the Docs API can't re-insert it at a smaller size. Resize it by hand by dragging a corner handle.",
+      )
+    }
+    const width = Math.round(img.widthPt * action.scale)
+    const height = Math.round(img.heightPt * action.scale)
+    // Delete the one-index image element, then insert the resized image where it was. In a
+    // single batch these apply in order, so the insert index is the freed slot.
+    await pushBatchUpdate(this.documentId, [
+      { deleteContentRange: { range: { startIndex: img.docStart, endIndex: img.docStart + 1 } } },
+      {
+        insertInlineImage: {
+          uri: img.uri,
+          location: { index: img.docStart },
+          objectSize: {
+            width: { magnitude: width, unit: 'PT' },
+            height: { magnitude: height, unit: 'PT' },
+          },
+        },
+      },
+    ])
     return fetchGoogleDoc(this.documentId)
   }
 
@@ -299,10 +344,8 @@ export function buildRequests(doc: DocModel, action: EditAction): unknown[] {
       return []
 
     case 'resizeImage':
-      // The Docs API has no request to resize an existing inline image (only border edits),
-      // so this is advisory on live docs — the offline backend resizes it in the model so
-      // the recommendation is demonstrable. Re-inserting at a smaller size would need the
-      // original image URI, which the read path doesn't expose.
+      // Handled directly by GoogleDocsBackend.applyResizeImage (delete + re-insert at the
+      // new size), since the Docs API has no in-place image resize request.
       return []
   }
 }
