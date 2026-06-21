@@ -10,6 +10,8 @@ interface PanelState {
   loading: boolean
   /** Current page count from the worker — exact (live PDF export) or estimated. */
   pages: number
+  /** Set when `pages` is the rough estimate because the exact PDF export failed. */
+  pagesNotice: string | null
   /** Whether the panel is analyzing the live doc or the offline sample. */
   docSource: 'live' | 'sample' | null
   /** A heads-up from the worker (e.g. couldn't open the live doc), or null. */
@@ -32,6 +34,7 @@ function applyState(set: (p: Partial<PanelState>) => void, msg: Extract<Msg, { t
     flags: msg.flags,
     settings: msg.settings,
     pages: msg.pages ?? 0,
+    pagesNotice: msg.pagesNotice ?? null,
     docSource: msg.docSource ?? null,
     notice: msg.notice ?? null,
     error: null,
@@ -55,6 +58,7 @@ export const useStore = create<PanelState>((set, get) => ({
   settings: { ...DEFAULT_SETTINGS },
   loading: true,
   pages: 0,
+  pagesNotice: null,
   docSource: null,
   notice: null,
   error: null,

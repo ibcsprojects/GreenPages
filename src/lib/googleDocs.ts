@@ -104,9 +104,15 @@ export function tableCellStarts(api: ApiDoc, atOrAfter: number): number[] {
  */
 export async function fetchDocPageCount(docId: string): Promise<number> {
   const res = await authedFetch(DRIVE_EXPORT_PDF(docId))
-  if (!res.ok) throw new Error(`drive export ${res.status}`)
+  if (!res.ok) {
+    // Surface Google's reason (e.g. "Drive API has not been used in project … or it is
+    // disabled", or a 403 for a missing drive scope) so the fallback isn't a mystery.
+    const body = await res.text().catch(() => '')
+    const reason = body.match(/"message":\s*"([^"]+)"/)?.[1] ?? body.slice(0, 200)
+    throw new Error(`Drive export ${res.status}${reason ? `: ${reason}` : ''}`)
+  }
   const count = countPdfPages(await res.arrayBuffer())
-  if (count <= 0) throw new Error('could not read page count from exported PDF')
+  if (count <= 0) throw new Error('could not read page count from the exported PDF')
   return count
 }
 

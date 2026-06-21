@@ -36,6 +36,8 @@ export type Msg =
       pages?: number
       /** A user-facing heads-up, e.g. "couldn't open your doc, showing a sample". */
       notice?: string
+      /** Set when `pages` is the rough estimate because the exact PDF export failed. */
+      pagesNotice?: string
     }
   /** A handler threw — surfaced to the panel instead of vanishing into a dead port. */
   | { type: 'ERROR'; message: string }

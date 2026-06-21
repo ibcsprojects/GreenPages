@@ -34,6 +34,8 @@ let liveDocId: string | null = null
 // OAuth mismatch / Docs error is visible instead of silently analyzing the sample).
 let docSource: 'live' | 'sample' = 'sample'
 let loadNotice: string | null = null
+// Set when the live page count fell back to the rough estimate (PDF export unavailable).
+let pagesNotice: string | null = null
 
 const state: State = {
   doc: SAMPLE_DOC,
@@ -101,10 +103,16 @@ async function refreshPages() {
   if (liveLoaded && liveDocId) {
     try {
       state.pages = await fetchDocPageCount(liveDocId)
+      pagesNotice = null
       return
     } catch (err) {
+      // The heuristic is rough (it often undercounts), so don't let this fail silently —
+      // tell the user the number is an estimate and why the exact PDF count didn't work.
+      pagesNotice = `Page count is a rough estimate — couldn't get the exact count by exporting your doc to PDF. ${(err as Error)?.message ?? err}. Enable the Google Drive API for your OAuth project and grant Drive access.`
       console.warn('[GreenPages] PDF page count failed, using estimate:', err)
     }
+  } else {
+    pagesNotice = null
   }
   state.pages = estimatePages(state.doc).pages
 }
@@ -123,6 +131,7 @@ function stateMessage(): Msg {
     docSource,
     pages: state.pages,
     ...(loadNotice ? { notice: loadNotice } : {}),
+    ...(pagesNotice ? { pagesNotice } : {}),
   }
 }
 

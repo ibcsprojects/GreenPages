@@ -6,6 +6,7 @@ import { useStore } from '../state/store'
 export function Banner() {
   const error = useStore((s) => s.error)
   const notice = useStore((s) => s.notice)
+  const pagesNotice = useStore((s) => s.pagesNotice)
   const docSource = useStore((s) => s.docSource)
 
   if (error) {
@@ -22,6 +23,15 @@ export function Banner() {
     return (
       <div className="border-b border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
         {notice}
+      </div>
+    )
+  }
+
+  // On a live doc, warn when the page count fell back to the rough estimate.
+  if (pagesNotice) {
+    return (
+      <div className="border-b border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-800">
+        {pagesNotice}
       </div>
     )
   }
