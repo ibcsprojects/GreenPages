@@ -27,7 +27,14 @@ export function FlagList() {
 
   if (flags.length === 0) return <EmptyState />
 
-  const groups = groupFlags(flags)
+  // The margins recommendation always leads the panel; the rest stay in document order
+  // (groupFlags relies on that order to cluster overlapping flags).
+  const ordered = [...flags].sort((a, b) => {
+    if (a.type === 'wideMargins' && b.type !== 'wideMargins') return -1
+    if (b.type === 'wideMargins' && a.type !== 'wideMargins') return 1
+    return a.range.start - b.range.start
+  })
+  const groups = groupFlags(ordered)
 
   return (
     <div className="space-y-2 p-3">

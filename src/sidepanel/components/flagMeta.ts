@@ -8,6 +8,8 @@ export const FLAG_META: Record<FlagType, { label: string; icon: string; accent: 
   bulletSprawl: { label: 'Paper — layout', icon: '☰', accent: 'bg-teal-100 text-teal-800' },
   verbose: { label: 'Paper — wordiness', icon: '✂️', accent: 'bg-leaf-100 text-leaf-800' },
   largeImage: { label: 'Paper — image', icon: '🖼️', accent: 'bg-indigo-100 text-indigo-800' },
+  wideMargins: { label: 'Paper — margins', icon: '⬜', accent: 'bg-orange-100 text-orange-800' },
+  wideIndents: { label: 'Paper — indents', icon: '⇥', accent: 'bg-lime-100 text-lime-800' },
 }
 
 export const SEVERITY_DOT: Record<Severity, string> = {

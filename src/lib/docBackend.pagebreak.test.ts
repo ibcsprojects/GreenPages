@@ -37,3 +37,51 @@ describe('buildRequests: pageBreakToRule → horizontal line', () => {
     expect(JSON.stringify(reqs)).not.toContain('insertText')
   })
 })
+
+describe('buildRequests: reduceIndents → updateParagraphStyle', () => {
+  it('zeroes only the wide side(s) of each wide paragraph in range', () => {
+    const d = rebuildOffsets({
+      id: 'd',
+      title: 't',
+      defaultFontSize: 11,
+      linesPerPage: 46,
+      paragraphs: [
+        // wide left + narrow right → only indentStart should be zeroed
+        { id: 'a', kind: 'normal', runs: [{ text: 'Indented para', fontSize: 11 }], indentStartPt: 144, indentEndPt: 18, docStart: 1, docEnd: 15 },
+        // small indent → not touched
+        { id: 'b', kind: 'normal', runs: [{ text: 'Normal para', fontSize: 11 }], indentStartPt: 18, docStart: 15, docEnd: 27 },
+      ],
+    })
+    const reqs = buildRequests(d, {
+      kind: 'reduceIndents',
+      range: { start: d.paragraphs[0].start!, end: d.paragraphs[1].end! },
+    }) as any[]
+
+    // Only the wide paragraph produces a request.
+    expect(reqs).toHaveLength(1)
+    const u = reqs[0].updateParagraphStyle
+    expect(u.fields).toBe('indentStart') // narrow right side left out
+    expect(u.paragraphStyle.indentStart).toEqual({ magnitude: 0, unit: 'PT' })
+    expect(u.paragraphStyle.indentEnd).toBeUndefined()
+    expect(u.range.startIndex).toBe(1)
+  })
+})
+
+describe('buildRequests: setMargins → updateDocumentStyle', () => {
+  it('updates the four document margins in points', () => {
+    const reqs = buildRequests(doc(), {
+      kind: 'setMargins',
+      range: { start: 0, end: 0 },
+      topPt: 54,
+      bottomPt: 54,
+      leftPt: 54,
+      rightPt: 54,
+    }) as any[]
+
+    expect(reqs).toHaveLength(1)
+    const u = reqs[0].updateDocumentStyle
+    expect(u.fields).toBe('marginTop,marginBottom,marginLeft,marginRight')
+    expect(u.documentStyle.marginTop).toEqual({ magnitude: 54, unit: 'PT' })
+    expect(u.documentStyle.marginRight).toEqual({ magnitude: 54, unit: 'PT' })
+  })
+})

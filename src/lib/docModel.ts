@@ -46,6 +46,9 @@ export interface Paragraph {
   runs: TextRun[]
   /** Inline images anchored in this paragraph, if any. */
   images?: DocImage[]
+  /** Left/right paragraph indents in points (the ruler's blue markers). 0/undefined = none. */
+  indentStartPt?: number
+  indentEndPt?: number
   /** Google Docs structural extent [docStart, docEnd) including the trailing newline
    *  (read path). Used for paragraph-level edits like deleting blank lines. */
   docStart?: number
@@ -55,6 +58,14 @@ export interface Paragraph {
   end?: number
 }
 
+/** Page margins in points (read from / written to the Docs API documentStyle). */
+export interface PageMargins {
+  topPt: number
+  bottomPt: number
+  leftPt: number
+  rightPt: number
+}
+
 export interface DocModel {
   id: string
   title: string
@@ -62,6 +73,11 @@ export interface DocModel {
   /** Roughly how many text lines fill one printed page (used by pageEstimate). */
   linesPerPage: number
   paragraphs: Paragraph[]
+  /** Page size in points (US-Letter 612×792 when absent). */
+  pageWidthPt?: number
+  pageHeightPt?: number
+  /** Page margins in points; enables the wide-margins detector + fix. */
+  margins?: PageMargins
 }
 
 /** Concatenated text of a paragraph's runs. */
@@ -76,6 +92,26 @@ export const BULLET_GLYPH = /^\s*[•·▪◦‣⁃∙*+-]\s+/
 /** Strip a leading manual bullet glyph so table cells don't carry "• " into the grid. */
 export function stripBulletGlyph(text: string): string {
   return text.replace(BULLET_GLYPH, '')
+}
+
+/** Indents at or below this (0.5in) are normal styling and left alone; above it wastes
+ *  horizontal space and is reducible. Shared by the detector and both edit backends. */
+export const INDENT_KEEP_PT = 36
+
+/** Which sides of a paragraph carry a wasteful (wide) indent worth removing. */
+export function wideIndentSides(p: Paragraph): { left: boolean; right: boolean } {
+  return {
+    left: (p.indentStartPt ?? 0) > INDENT_KEEP_PT,
+    right: (p.indentEndPt ?? 0) > INDENT_KEEP_PT,
+  }
+}
+
+/** A body paragraph whose left or right indent is wide enough to reclaim space. Headings,
+ *  list items and breaks are skipped — their indents are structural, not wasted margin. */
+export function hasWideIndent(p: Paragraph): boolean {
+  if (p.kind !== 'normal' || paragraphText(p).trim().length === 0) return false
+  const { left, right } = wideIndentSides(p)
+  return left || right
 }
 
 /** Whole-document flat text, paragraphs joined by newlines. */
@@ -134,6 +170,10 @@ export const SAMPLE_DOC: DocModel = rebuildOffsets({
   title: 'Q3 Sustainability Report (sample)',
   defaultFontSize: 11,
   linesPerPage: 46,
+  // US-Letter with wasteful 1.5in margins all round — trips the wide-margins detector.
+  pageWidthPt: 612,
+  pageHeightPt: 792,
+  margins: { topPt: 108, bottomPt: 108, leftPt: 108, rightPt: 108 },
   paragraphs: [
     { id: pid(), kind: 'heading', runs: [run('Q3 Sustainability Report', { fontSize: 20, bold: true })] },
     {

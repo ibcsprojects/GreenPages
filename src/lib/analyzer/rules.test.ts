@@ -182,6 +182,148 @@ describe('MockDocsBackend.apply', () => {
   })
 })
 
+describe('wideMargins detection', () => {
+  const marginDoc = (pt: number): DocModel =>
+    rebuildOffsets({
+      id: 'd',
+      title: 't',
+      defaultFontSize: 11,
+      linesPerPage: 46,
+      pageWidthPt: 612,
+      pageHeightPt: 792,
+      margins: { topPt: pt, bottomPt: pt, leftPt: pt, rightPt: pt },
+      paragraphs: [{ id: 'a', kind: 'normal', runs: [{ text: 'Body text here.', fontSize: 11 }] }],
+    })
+
+  // Build a doc with independent per-side margins (PT) on a Letter page.
+  const sidesDoc = (s: { topPt: number; bottomPt: number; leftPt: number; rightPt: number }): DocModel =>
+    rebuildOffsets({
+      id: 'd',
+      title: 't',
+      defaultFontSize: 11,
+      linesPerPage: 46,
+      pageWidthPt: 612,
+      pageHeightPt: 792,
+      margins: s,
+      paragraphs: [{ id: 'a', kind: 'normal', runs: [{ text: 'Body text here.', fontSize: 11 }] }],
+    })
+
+  it('resets oversized margins to 1in and saves paper', () => {
+    // 2in all round: right marker = (612-144)/72 = 6.5in, outside the keep zone → all reset.
+    const f = analyzeDoc(marginDoc(144)).find((x) => x.type === 'wideMargins')
+    expect(f).toBeDefined()
+    const a = f!.action
+    expect(a.kind === 'setMargins' && [a.topPt, a.bottomPt, a.leftPt, a.rightPt]).toEqual([72, 72, 72, 72])
+    expect(f!.impact.paper).toBeGreaterThan(0)
+  })
+
+  it('does not touch margins at or below default (no paper to save)', () => {
+    expect(analyzeDoc(marginDoc(72)).some((x) => x.type === 'wideMargins')).toBe(false)
+    expect(analyzeDoc(marginDoc(36)).some((x) => x.type === 'wideMargins')).toBe(false)
+  })
+
+  it('resets only the oversized sides, preserving tight left/right (screenshot case)', () => {
+    // left/right 0.75in (54pt): left marker 54/72-0.75 = 0.0in, right marker 8.5-0.75-0.75 =
+    // 7.0in — both in the keep zones (and ≤1in anyway). top/bottom 2in → reset.
+    const f = analyzeDoc(
+      sidesDoc({ topPt: 144, bottomPt: 144, leftPt: 54, rightPt: 54 }),
+    ).find((x) => x.type === 'wideMargins')
+    expect(f).toBeDefined()
+    const a = f!.action
+    expect(a.kind === 'setMargins' && [a.topPt, a.bottomPt, a.leftPt, a.rightPt]).toEqual([
+      72, 72, 54, 54,
+    ])
+  })
+
+  it('leaves a uniformly tight (0.75in) doc alone', () => {
+    expect(analyzeDoc(marginDoc(54)).some((x) => x.type === 'wideMargins')).toBe(false)
+  })
+
+  it('does not flag a doc with no margin info', () => {
+    const doc = marginDoc(144)
+    delete doc.margins
+    expect(analyzeDoc(doc).some((x) => x.type === 'wideMargins')).toBe(false)
+  })
+
+  it('does not spell out the target margin values on the card', () => {
+    const f = analyzeDoc(marginDoc(144)).find((x) => x.type === 'wideMargins')!
+    const shown = `${f.title} ${f.before} ${f.after} ${f.explanation}`
+    expect(shown).not.toMatch(/0\.75|54|\b72\b|0\.0|7\.0/)
+  })
+
+  it('shrinks the oversized margins and clears the flag on apply', async () => {
+    const doc = marginDoc(144)
+    const f = analyzeDoc(doc).find((x) => x.type === 'wideMargins')!
+    const next = await new MockDocsBackend().apply(doc, f.action)
+    expect(next.margins).toEqual({ topPt: 72, bottomPt: 72, leftPt: 72, rightPt: 72 })
+    expect(analyzeDoc(next).some((x) => x.type === 'wideMargins')).toBe(false)
+  })
+})
+
+describe('wideIndents detection', () => {
+  const indentDoc = (
+    paras: { text: string; kind?: 'normal' | 'bullet' | 'heading'; indentStartPt?: number; indentEndPt?: number }[],
+  ): DocModel =>
+    rebuildOffsets({
+      id: 'd',
+      title: 't',
+      defaultFontSize: 11,
+      linesPerPage: 46,
+      pageWidthPt: 612,
+      pageHeightPt: 792,
+      margins: { topPt: 72, bottomPt: 72, leftPt: 72, rightPt: 72 },
+      paragraphs: paras.map((p, i) => ({
+        id: `p${i}`,
+        kind: p.kind ?? 'normal',
+        runs: [{ text: p.text, fontSize: 11 }],
+        ...(p.indentStartPt ? { indentStartPt: p.indentStartPt } : {}),
+        ...(p.indentEndPt ? { indentEndPt: p.indentEndPt } : {}),
+      })),
+    })
+
+  it('flags paragraphs whose indents exceed 0.5in', () => {
+    const f = analyzeDoc(
+      indentDoc([
+        { text: 'A paragraph pulled well in from both sides.', indentStartPt: 144, indentEndPt: 144 },
+        { text: 'Another deeply indented paragraph here.', indentStartPt: 144 },
+      ]),
+    ).find((x) => x.type === 'wideIndents')
+    expect(f).toBeDefined()
+    expect(f!.action.kind).toBe('reduceIndents')
+    expect(f!.impact.paper).toBeGreaterThan(0)
+  })
+
+  it('leaves small/normal indents (≤0.5in) alone', () => {
+    expect(
+      analyzeDoc(indentDoc([{ text: 'Slightly indented quote.', indentStartPt: 36 }])).some(
+        (x) => x.type === 'wideIndents',
+      ),
+    ).toBe(false)
+  })
+
+  it('ignores indents on list items and headings (structural, not wasted)', () => {
+    expect(
+      analyzeDoc(
+        indentDoc([
+          { text: 'Nested bullet', kind: 'bullet', indentStartPt: 144 },
+          { text: 'Indented heading', kind: 'heading', indentStartPt: 144 },
+        ]),
+      ).some((x) => x.type === 'wideIndents'),
+    ).toBe(false)
+  })
+
+  it('removes only the wide side and clears the flag on apply', async () => {
+    const doc = indentDoc([
+      { text: 'Wide on the left only, normal on the right.', indentStartPt: 144, indentEndPt: 18 },
+    ])
+    const f = analyzeDoc(doc).find((x) => x.type === 'wideIndents')!
+    const next = await new MockDocsBackend().apply(doc, f.action)
+    expect(next.paragraphs[0].indentStartPt).toBe(0) // wide side removed
+    expect(next.paragraphs[0].indentEndPt).toBe(18) // narrow side preserved
+    expect(analyzeDoc(next).some((x) => x.type === 'wideIndents')).toBe(false)
+  })
+})
+
 describe('largeImage detection', () => {
   const imageDoc = (widthPt: number, heightPt: number): DocModel =>
     rebuildOffsets({

@@ -5,7 +5,7 @@
 // `batchUpdate` request.
 
 import type { DocModel, Paragraph, TextRun } from './docModel'
-import { cloneDoc, rebuildOffsets } from './docModel'
+import { cloneDoc, rebuildOffsets, hasWideIndent, wideIndentSides } from './docModel'
 import type { EditAction, Range } from './analyzer/types'
 import { fetchGoogleDoc, fetchGoogleDocRaw, pushBatchUpdate, tableCellStarts } from './googleDocs'
 import { tableLayout } from './tableLayout'
@@ -108,6 +108,24 @@ export class MockDocsBackend implements EditBackend {
         }
         break
       }
+
+      case 'setMargins':
+        next.margins = {
+          topPt: action.topPt,
+          bottomPt: action.bottomPt,
+          leftPt: action.leftPt,
+          rightPt: action.rightPt,
+        }
+        break
+
+      case 'reduceIndents':
+        for (const p of next.paragraphs) {
+          if (!overlaps(action.range, p) || !hasWideIndent(p)) continue
+          const s = wideIndentSides(p)
+          if (s.left) p.indentStartPt = 0
+          if (s.right) p.indentEndPt = 0
+        }
+        break
 
       case 'resizeImage': {
         for (const p of next.paragraphs) {
@@ -354,6 +372,50 @@ export function buildRequests(doc: DocModel, action: EditAction): unknown[] {
       // Handled directly by GoogleDocsBackend.applyResizeImage (delete + re-insert at the
       // new size), since the Docs API has no in-place image resize request.
       return []
+
+    case 'setMargins':
+      // Document-level margins (single-section docs). Each field is a PT dimension.
+      return [
+        {
+          updateDocumentStyle: {
+            documentStyle: {
+              marginTop: { magnitude: action.topPt, unit: 'PT' },
+              marginBottom: { magnitude: action.bottomPt, unit: 'PT' },
+              marginLeft: { magnitude: action.leftPt, unit: 'PT' },
+              marginRight: { magnitude: action.rightPt, unit: 'PT' },
+            },
+            fields: 'marginTop,marginBottom,marginLeft,marginRight',
+          },
+        },
+      ]
+
+    case 'reduceIndents': {
+      // One updateParagraphStyle per wide paragraph, zeroing only the side(s) that are wide
+      // so a legit indent on the other side survives. Skips any non-wide paragraph in range.
+      const reqs: unknown[] = []
+      for (const p of doc.paragraphs) {
+        if (!overlaps(action.range, p) || !hasWideIndent(p) || p.docStart == null || p.docEnd == null) {
+          continue
+        }
+        const s = wideIndentSides(p)
+        const paragraphStyle: Record<string, unknown> = {}
+        const fields: string[] = []
+        if (s.left) {
+          paragraphStyle.indentStart = { magnitude: 0, unit: 'PT' }
+          fields.push('indentStart')
+        }
+        if (s.right) {
+          paragraphStyle.indentEnd = { magnitude: 0, unit: 'PT' }
+          fields.push('indentEnd')
+        }
+        const startIndex = p.docStart
+        const endIndex = Math.max(p.docStart + 1, p.docEnd - 1) // keep trailing newline
+        reqs.push({
+          updateParagraphStyle: { range: { startIndex, endIndex }, paragraphStyle, fields: fields.join(',') },
+        })
+      }
+      return reqs
+    }
   }
 }
 

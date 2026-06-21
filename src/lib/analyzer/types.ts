@@ -11,6 +11,8 @@ export type FlagType =
   | 'bulletSprawl' // many tiny bullets that a table would compress
   | 'verbose' // redundant text an AI can condense
   | 'largeImage' // an oversized image dominating the page
+  | 'wideMargins' // oversized page margins shrinking the printable area
+  | 'wideIndents' // wide paragraph indents wasting horizontal space
 
 export type Severity = 'low' | 'medium' | 'high'
 
@@ -32,6 +34,8 @@ export type EditAction =
   | { kind: 'bulletsToTable'; range: Range; rows: string[] }
   | { kind: 'replaceText'; range: Range; text: string }
   | { kind: 'resizeImage'; range: Range; objectId?: string; scale: number }
+  | { kind: 'setMargins'; range: Range; topPt: number; bottomPt: number; leftPt: number; rightPt: number }
+  | { kind: 'reduceIndents'; range: Range }
 
 /** Estimated environmental saving from accepting one flag. */
 export interface EcoImpact {

@@ -2,8 +2,8 @@
 // modal and the side panel header. Deliberately simple and transparent — font size and
 // blank lines both inflate the count, which is exactly what the flags target.
 
-import type { DocModel } from './docModel'
-import { paragraphText } from './docModel'
+import type { DocModel } from './docModel.js'
+import { paragraphText } from './docModel.js'
 
 const CHARS_PER_LINE_AT_11PT = 90
 

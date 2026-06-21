@@ -4,10 +4,11 @@
 // is identical whether analysis is local or AI-assisted.
 
 import type { DocModel, Paragraph } from '../docModel.js'
-import { paragraphText, stripBulletGlyph } from '../docModel.js'
+import { paragraphText, stripBulletGlyph, hasWideIndent, wideIndentSides, INDENT_KEEP_PT } from '../docModel.js'
 import type { EcoImpact, Flag, Range } from './types.js'
 import { condenseLocally, looksVerbose } from './condense.js'
 import { tableLayout } from '../tableLayout.js'
+import { estimatePages } from '../pageEstimate.js'
 
 /** ~characters that fit on one printed line / page for impact math. */
 const CHARS_PER_LINE = 90
@@ -288,6 +289,118 @@ function detectLargeImages(doc: DocModel): Flag[] {
   return flags
 }
 
+// ---------------------------------------------------------------------------
+// 8. Margins larger than the 1in default → reset just those (only when it saves paper).
+//    Two sides honour a "keep as-is" ruler zone so a deliberately tight layout is left be.
+//    Surfaced first in the panel (see FlagList) so it's the top recommendation.
+// ---------------------------------------------------------------------------
+/** US-Letter fallback and the Google Docs default margin, in points (72pt = 1 inch). */
+const LETTER_W_PT = 612
+const LETTER_H_PT = 792
+const DEFAULT_MARGIN_PT = 72 // 1in on every side — the Google Docs default
+const PT_PER_IN = 72
+
+function detectWideMargins(doc: DocModel): Flag[] {
+  const m = doc.margins
+  if (!m) return []
+  const pageW = doc.pageWidthPt ?? LETTER_W_PT
+  const pageH = doc.pageHeightPt ?? LETTER_H_PT
+
+  // The Google Docs ruler runs -0.75in (left page edge) … 7.75in (right page edge), so
+  // ruler 0 sits 0.75in in from the left edge. A left margin of M inches puts the left
+  // marker at M − 0.75; a right margin of M puts the right marker at (pageWidth − M) − 0.75.
+  // The user keeps a side as-is when its marker is in a preferred zone.
+  const RULER_OFFSET_IN = 0.75
+  const leftMarkerIn = m.leftPt / PT_PER_IN - RULER_OFFSET_IN
+  const rightMarkerIn = pageW / PT_PER_IN - m.rightPt / PT_PER_IN - RULER_OFFSET_IN
+  const keepLeft = leftMarkerIn >= -0.75 && leftMarkerIn <= 0.0
+  const keepRight = rightMarkerIn >= 7.0 && rightMarkerIn <= 7.75
+
+  // Reset a side to default only if that shrinks it (current > 1in → saves paper) and it
+  // isn't in a keep zone. Top/bottom have no keep zone.
+  const reduced = (cur: number, keep: boolean) =>
+    !keep && cur > DEFAULT_MARGIN_PT ? DEFAULT_MARGIN_PT : cur
+  const next = {
+    topPt: reduced(m.topPt, false),
+    bottomPt: reduced(m.bottomPt, false),
+    leftPt: reduced(m.leftPt, keepLeft),
+    rightPt: reduced(m.rightPt, keepRight),
+  }
+
+  // Nothing worth flagging unless at least one side actually shrinks.
+  const shrank =
+    next.topPt < m.topPt ||
+    next.bottomPt < m.bottomPt ||
+    next.leftPt < m.leftPt ||
+    next.rightPt < m.rightPt
+  if (!shrank) return []
+
+  const area = (mr: typeof next) =>
+    Math.max(1, (pageW - mr.leftPt - mr.rightPt) * (pageH - mr.topPt - mr.bottomPt))
+  const fractionSaved = Math.max(0, 1 - area(m) / area(next))
+  const basePages = estimatePages(doc).pages
+
+  const range: Range = { start: 0, end: 0 } // document-level fix; anchor at the top
+  return [
+    {
+      id: fid('margins'),
+      type: 'wideMargins',
+      severity: 'medium',
+      range,
+      // Deliberately generic — the card doesn't spell out the target margin values.
+      title: 'Wide margins',
+      explanation:
+        'Some page margins are larger than the default, shrinking the printable area and pushing text onto extra pages. Resetting just those reclaims space without touching your tighter margins.',
+      before: 'Oversized margins',
+      after: 'Default margins where it saves paper',
+      impact: { paper: fractionSaved * basePages, ink: 0 },
+      action: { kind: 'setMargins', range, ...next },
+    },
+  ]
+}
+
+// ---------------------------------------------------------------------------
+// 9. Wide paragraph indents (the ruler's blue markers) → pull them back. Big left/right
+//    indents narrow each line, so text runs onto extra pages. Same idea as wide margins,
+//    but per-paragraph: only the indents the user can see waste space here.
+// ---------------------------------------------------------------------------
+function detectWideIndents(doc: DocModel): Flag[] {
+  const wide = doc.paragraphs.filter(hasWideIndent)
+  if (wide.length === 0) return []
+
+  // Reclaimable horizontal space lives inside the text column (page minus page margins).
+  const pageW = doc.pageWidthPt ?? LETTER_W_PT
+  const sideMargins = doc.margins ? doc.margins.leftPt + doc.margins.rightPt : 2 * DEFAULT_MARGIN_PT
+  const contentW = Math.max(1, pageW - sideMargins)
+
+  // Estimate lines saved: each wide paragraph's lines shrink in proportion to the indent
+  // removed relative to the column width.
+  let linesSaved = 0
+  for (const p of wide) {
+    const s = wideIndentSides(p)
+    const removed = (s.left ? (p.indentStartPt ?? 0) : 0) + (s.right ? (p.indentEndPt ?? 0) : 0)
+    const lines = Math.max(1, Math.ceil(paragraphText(p).length / CHARS_PER_LINE))
+    linesSaved += lines * (removed / contentW)
+  }
+
+  const range: Range = { start: wide[0].start!, end: wide[wide.length - 1].end! }
+  return [
+    {
+      id: fid('indents'),
+      type: 'wideIndents',
+      severity: 'low',
+      range,
+      title: `${wide.length} indented paragraph${wide.length === 1 ? '' : 's'}`,
+      explanation:
+        'Wide left/right indents narrow each line, pushing text onto extra pages. Pulling these paragraphs back to the margin fits more on every line. Small indents are left alone.',
+      before: `${wide.length} paragraph${wide.length === 1 ? '' : 's'} indented past ${+(INDENT_KEEP_PT / 72).toFixed(2)}in`,
+      after: 'Indents removed (text back to the margin)',
+      impact: { paper: Math.max(0, linesSaved / doc.linesPerPage), ink: 0 },
+      action: { kind: 'reduceIndents', range },
+    },
+  ]
+}
+
 function truncate(s: string, n = 60): string {
   const t = s.replace(/\s+/g, ' ').trim()
   return t.length > n ? t.slice(0, n - 1) + '…' : t
@@ -310,6 +423,8 @@ export function analyzeDoc(doc: DocModel, opts: AnalyzeDocOptions = {}): Flag[] 
     ...detectBulletSprawl(doc),
     ...detectVerbose(doc, opts.aiRewrite ?? false),
     ...detectLargeImages(doc),
+    ...detectWideMargins(doc),
+    ...detectWideIndents(doc),
   ]
   return flags.sort((a, b) => a.range.start - b.range.start)
 }

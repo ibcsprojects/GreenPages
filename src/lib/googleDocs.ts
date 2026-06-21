@@ -187,7 +187,11 @@ interface ApiInlineObject {
 }
 interface ApiParagraph {
   elements?: ApiElement[]
-  paragraphStyle?: { namedStyleType?: string }
+  paragraphStyle?: {
+    namedStyleType?: string
+    indentStart?: ApiDimension
+    indentEnd?: ApiDimension
+  }
   bullet?: unknown
 }
 interface ApiTableCell {
@@ -211,10 +215,18 @@ interface ApiStructural {
   paragraph?: ApiParagraph
   table?: ApiTable
 }
+interface ApiDocumentStyle {
+  marginTop?: ApiDimension
+  marginBottom?: ApiDimension
+  marginLeft?: ApiDimension
+  marginRight?: ApiDimension
+  pageSize?: { width?: ApiDimension; height?: ApiDimension }
+}
 export interface ApiDoc {
   title?: string
   body?: { content?: ApiStructural[] }
   inlineObjects?: Record<string, ApiInlineObject>
+  documentStyle?: ApiDocumentStyle
 }
 
 function mapApiDoc(docId: string, api: ApiDoc): DocModel {
@@ -227,12 +239,25 @@ function mapApiDoc(docId: string, api: ApiDoc): DocModel {
   if (paragraphs.length === 0) {
     paragraphs.push({ id: 'p0', kind: 'normal', runs: [{ text: '', fontSize: DEFAULT_FONT }] })
   }
+  const ds = api.documentStyle
+  // Docs omits a margin field when it's the 1in default, so fall back to 72pt per side.
+  const margins = ds
+    ? {
+        topPt: ds.marginTop?.magnitude ?? 72,
+        bottomPt: ds.marginBottom?.magnitude ?? 72,
+        leftPt: ds.marginLeft?.magnitude ?? 72,
+        rightPt: ds.marginRight?.magnitude ?? 72,
+      }
+    : undefined
   return rebuildOffsets({
     id: docId,
     title: api.title ?? 'Untitled',
     defaultFontSize: DEFAULT_FONT,
     linesPerPage: 46,
     paragraphs,
+    pageWidthPt: ds?.pageSize?.width?.magnitude,
+    pageHeightPt: ds?.pageSize?.height?.magnitude,
+    ...(margins ? { margins } : {}),
   })
 }
 
@@ -263,11 +288,16 @@ function mapParagraph(
         ? 'heading'
         : 'normal'
 
+  const indentStartPt = para.paragraphStyle?.indentStart?.magnitude
+  const indentEndPt = para.paragraphStyle?.indentEnd?.magnitude
+
   return {
     id,
     kind,
     runs,
     ...(images.length ? { images } : {}),
+    ...(indentStartPt ? { indentStartPt } : {}),
+    ...(indentEndPt ? { indentEndPt } : {}),
     docStart: el.startIndex,
     docEnd: el.endIndex,
   }
