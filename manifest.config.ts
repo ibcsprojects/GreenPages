@@ -45,5 +45,13 @@ export default defineManifest({
   ],
   permissions: ['sidePanel', 'storage', 'scripting', 'activeTab', 'identity'],
   host_permissions: ['https://docs.google.com/*'],
+  // The injected pill (content script) shows the logo, so the page must be allowed to
+  // load it from the extension.
+  web_accessible_resources: [
+    {
+      resources: ['icons/*'],
+      matches: ['https://docs.google.com/*'],
+    },
+  ],
 })
    

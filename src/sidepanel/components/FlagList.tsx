@@ -3,6 +3,7 @@ import { useStore } from '../state/store'
 import { FlagCard, FlagGroupCard } from './FlagCard'
 import { EmptyState } from './EmptyState'
 import { groupFlags } from './groupFlags'
+import logoUrl from '../../assets/logo.png'
 
 export function FlagList() {
   const flags = useStore((s) => s.flags)
@@ -19,7 +20,7 @@ export function FlagList() {
           <div className="relative grid h-16 w-16 place-items-center">
             <span className="absolute inline-block h-16 w-16 animate-ping rounded-full bg-leaf-300/40" />
             <span className="absolute inline-block h-12 w-12 animate-spin rounded-full border-2 border-leaf-200 border-t-leaf-600" />
-            <span className="text-2xl">🌿</span>
+            <img src={logoUrl} alt="" className="h-6 w-6" />
           </div>
           <h2 className="mt-4 text-sm font-semibold text-leaf-800">Scanning document…</h2>
           <p className="mt-1 max-w-[15rem] text-xs text-bark-700/70">

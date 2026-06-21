@@ -17,7 +17,7 @@ function FlagChip({ flag }: { flag: Flag }) {
   const meta = FLAG_META[flag.type]
   return (
     <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium ${meta.accent}`}>
-      {meta.icon} {meta.label}
+      {meta.label}
     </span>
   )
 }
