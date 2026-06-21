@@ -29,9 +29,13 @@ describe('buildRequests: pageBreakToRule → horizontal line', () => {
     // Then turn the remaining empty paragraph into a horizontal line via a bottom border.
     const style = reqs[1].updateParagraphStyle
     expect(style.range).toEqual({ startIndex: 7, endIndex: 8 })
-    expect(style.fields).toBe('borderBottom')
+    expect(style.fields).toBe('borderBottom,indentStart,indentEnd,indentFirstLine')
     expect(style.paragraphStyle.borderBottom.dashStyle).toBe('SOLID')
     expect(style.paragraphStyle.borderBottom.width).toEqual({ magnitude: 1, unit: 'PT' })
+
+    // Indents zeroed so the (dynamic) border spans the full text column, margin to margin.
+    expect(style.paragraphStyle.indentStart).toEqual({ magnitude: 0, unit: 'PT' })
+    expect(style.paragraphStyle.indentEnd).toEqual({ magnitude: 0, unit: 'PT' })
 
     // No literal "— — —" rule text is inserted anymore.
     expect(JSON.stringify(reqs)).not.toContain('insertText')

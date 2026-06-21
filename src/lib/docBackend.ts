@@ -62,6 +62,9 @@ export class MockDocsBackend implements EditBackend {
         if (p) {
           p.kind = 'normal'
           p.runs = [{ text: '', fontSize: doc.defaultFontSize }]
+          // Clear indents so the line spans the full text column (margin to margin).
+          p.indentStartPt = 0
+          p.indentEndPt = 0
         }
         break
       }
@@ -351,12 +354,19 @@ export function buildRequests(doc: DocModel, action: EditAction): unknown[] {
       const endIndex = p.docEnd! - 1 // preserve the trailing newline
       const reqs: unknown[] = []
       if (endIndex > startIndex) reqs.push({ deleteContentRange: { range: { startIndex, endIndex } } })
-      // After the delete the paragraph is just its newline at startIndex; border that paragraph.
+      // After the delete the paragraph is just its newline at startIndex; border that
+      // paragraph and zero its indents so the line spans the full text column. The border is
+      // dynamic, so it re-spans on its own whenever the page margins later change.
       reqs.push({
         updateParagraphStyle: {
           range: { startIndex, endIndex: startIndex + 1 },
-          paragraphStyle: { borderBottom: HORIZONTAL_RULE_BORDER },
-          fields: 'borderBottom',
+          paragraphStyle: {
+            borderBottom: HORIZONTAL_RULE_BORDER,
+            indentStart: { magnitude: 0, unit: 'PT' },
+            indentEnd: { magnitude: 0, unit: 'PT' },
+            indentFirstLine: { magnitude: 0, unit: 'PT' },
+          },
+          fields: 'borderBottom,indentStart,indentEnd,indentFirstLine',
         },
       })
       return reqs
