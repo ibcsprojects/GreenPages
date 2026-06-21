@@ -14,6 +14,7 @@ interface PanelState {
   reanalyze: () => Promise<void>
   apply: (flagId: string, overrideText?: string) => Promise<void>
   dismiss: (flagId: string) => Promise<void>
+  reveal: (flagId: string) => Promise<void>
   updateSettings: (s: Partial<Settings>) => Promise<void>
 }
 
@@ -59,6 +60,11 @@ export const useStore = create<PanelState>((set, get) => ({
       flagId,
     })
     applyState(set, msg)
+  },
+
+  // Fire-and-forget: tells the worker to scroll the live doc; no state change here.
+  reveal: async (flagId) => {
+    await sendMessage({ type: 'REVEAL_FLAG', flagId }).catch(() => {})
   },
 
   updateSettings: async (s) => {

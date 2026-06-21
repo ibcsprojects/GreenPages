@@ -28,9 +28,14 @@ export type Msg =
   | { type: 'REANALYZE' }
   | { type: 'APPLY_FLAG'; flagId: string; overrideText?: string }
   | { type: 'DISMISS_FLAG'; flagId: string }
+  | { type: 'REVEAL_FLAG'; flagId: string }
   | { type: 'UPDATE_SETTINGS'; settings: Partial<Settings> }
   // content script ⇄ worker
   | { type: 'OPEN_PANEL' }
+  // worker → content script: reveal a flagged span in the live Google Doc.
+  // `fraction` (0..1 share of the doc's lines) drives a guaranteed proportional scroll;
+  // `text` is the flagged text used to drive Docs' native Find for an exact jump+highlight.
+  | { type: 'SCROLL_TO_FLAG'; text: string; fraction: number }
   | { type: 'GET_PRINT_SUMMARY' }
   | {
       type: 'PRINT_SUMMARY'

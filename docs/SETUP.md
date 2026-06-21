@@ -77,9 +77,11 @@ each run's Docs `startIndex` (`TextRun.docStart`) and each paragraph's
 `[docStart, docEnd)`. `docBackend.ts → toDocIndex()` translates flat offsets to Docs indices
 in `buildRequests`. Re-reading after every edit avoids index-shift bookkeeping.
 
-> **Known simplification:** `bulletsToTable` collapses bullets into a two-column **text**
-> block (same as offline). A real `insertTable` is possible but needs follow-up requests to
-> populate each cell at computed indices — left as an upgrade in `buildRequests`.
+> **Tables:** `bulletsToTable` inserts a real Google Docs table. Because a table's cell
+> indices don't exist until the table is created, `GoogleDocsBackend.applyBulletsToTable`
+> does it in two passes — insert the empty grid, re-read the doc, then fill each cell
+> (highest index first). Column count is chosen adaptively in `tableLayout` to stay compact
+> without breaking long words. Offline, the mock stands in with one paragraph per grid row.
 
 ---
 

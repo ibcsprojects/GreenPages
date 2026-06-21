@@ -2,12 +2,12 @@
 // ids, and settings; serves them to the side panel and the content script. Applying a
 // fix runs through the EditBackend and re-analyzes so flags stay consistent.
 
-import { SAMPLE_DOC, type DocModel } from '../lib/docModel'
+import { SAMPLE_DOC, flatten, type DocModel } from '../lib/docModel'
 import type { Flag } from '../lib/analyzer/types'
 import { analyze } from '../lib/analyzer/client'
 import { MockDocsBackend, GoogleDocsBackend, type EditBackend } from '../lib/docBackend'
 import { getActiveGoogleDocId, fetchGoogleDoc } from '../lib/googleDocs'
-import { estimatePages } from '../lib/pageEstimate'
+import { estimatePages, lineLocation } from '../lib/pageEstimate'
 import {
   DEFAULT_SETTINGS,
   onMessage,
@@ -129,6 +129,23 @@ onMessage(async (msg: Msg, sender) => {
     case 'DISMISS_FLAG':
       state.dismissed.add(msg.flagId)
       return stateMessage()
+
+    case 'REVEAL_FLAG': {
+      // Ask the content script in the active Google Doc tab to scroll to the flag. The
+      // panel doesn't steal tab focus, so the active tab is still the user's document.
+      const flag = state.flags.find((f) => f.id === msg.flagId)
+      if (flag) {
+        const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true })
+        if (tab?.id != null && /docs\.google\.com\/document\//.test(tab.url ?? '')) {
+          const { fraction } = lineLocation(state.doc, flag.range.start)
+          const text = flatten(state.doc).slice(flag.range.start, flag.range.end)
+          chrome.tabs
+            .sendMessage(tab.id, { type: 'SCROLL_TO_FLAG', text, fraction } satisfies Msg)
+            .catch(() => {}) // tab navigated / no content script — ignore
+        }
+      }
+      return { ok: true }
+    }
 
     case 'UPDATE_SETTINGS':
       state.settings = { ...state.settings, ...msg.settings }

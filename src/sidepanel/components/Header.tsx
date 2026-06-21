@@ -4,6 +4,11 @@ import { EcoScore } from './EcoScore'
 export function Header() {
   const reanalyze = useStore((s) => s.reanalyze)
   const loading = useStore((s) => s.loading)
+  const doc = useStore((s) => s.doc)
+
+  // Only reveal the eco score once a scan has actually completed for a doc —
+  // otherwise it flashes a misleading "perfect" score before scanning.
+  const showScore = !loading && !!doc
 
   return (
     <header className="sticky top-0 z-10 border-b border-leaf-100 bg-leaf-50/95 px-3 pb-2 pt-3 backdrop-blur">
@@ -21,7 +26,7 @@ export function Header() {
           {loading ? 'Scanning…' : '↻ Re-scan'}
         </button>
       </div>
-      <EcoScore />
+      {showScore && <EcoScore />}
     </header>
   )
 }

@@ -7,7 +7,8 @@
 import type { DocModel, Paragraph, TextRun } from './docModel'
 import { cloneDoc, rebuildOffsets } from './docModel'
 import type { EditAction, Range } from './analyzer/types'
-import { fetchGoogleDoc, pushBatchUpdate } from './googleDocs'
+import { fetchGoogleDoc, fetchGoogleDocRaw, pushBatchUpdate, tableCellStarts } from './googleDocs'
+import { tableLayout } from './tableLayout'
 
 export interface EditBackend {
   /** Apply one accepted fix, returning the new document state. */
@@ -66,28 +67,36 @@ export class MockDocsBackend implements EditBackend {
       }
 
       case 'bulletsToTable': {
-        const idx = next.paragraphs.findIndex((p) => overlaps(action.range, p))
-        const bullets = next.paragraphs.filter(
-          (p) => overlaps(action.range, p) && p.kind === 'bullet',
-        )
-        const ids = new Set(bullets.map((p) => p.id))
-        // Mock representation: a compact two-column text block standing in for a table.
-        // GoogleDocsBackend would emit an insertTable request instead.
-        const table = toTwoColumnText(action.rows)
-        const replacement: Paragraph = {
-          id: bullets[0]?.id ?? `tbl-${idx}`,
-          kind: 'normal',
-          runs: [{ text: table, fontSize: doc.defaultFontSize }],
+        // Indices of the actual bullets in range; everything between the first and last
+        // (bullets plus any blank spacer lines) is replaced by the grid.
+        const idxs = next.paragraphs
+          .map((p, k) => (overlaps(action.range, p) && p.kind === 'bullet' ? k : -1))
+          .filter((k) => k >= 0)
+        if (idxs.length === 0) break
+        const firstIdx = idxs[0]
+        const lastIdx = idxs[idxs.length - 1]
+        // The offline model has no table primitive, so stand in with one normal paragraph
+        // per grid row (cells joined by a bullet separator). GoogleDocsBackend emits a real
+        // insertTable instead — see applyBulletsToTable. Both share tableLayout's grid, so
+        // the line count (and thus the page estimate) matches the live result.
+        const layout = tableLayout(action.rows)
+        const baseId = next.paragraphs[firstIdx].id
+        const replacements: Paragraph[] = []
+        for (let r = 0; r < layout.rows; r++) {
+          const cells = layout.cells
+            .slice(r * layout.columns, (r + 1) * layout.columns)
+            .filter((c) => c.length > 0)
+          replacements.push({
+            id: r === 0 ? baseId : `${baseId}-r${r}`,
+            kind: 'normal',
+            runs: [{ text: cells.join('    •    '), fontSize: doc.defaultFontSize }],
+          })
         }
-        let inserted = false
-        next.paragraphs = next.paragraphs.flatMap((p) => {
-          if (!ids.has(p.id)) return [p]
-          if (!inserted) {
-            inserted = true
-            return [replacement]
-          }
-          return []
-        })
+        next.paragraphs = [
+          ...next.paragraphs.slice(0, firstIdx),
+          ...replacements,
+          ...next.paragraphs.slice(lastIdx + 1),
+        ]
         break
       }
 
@@ -96,6 +105,21 @@ export class MockDocsBackend implements EditBackend {
         if (p) {
           const first = p.runs[0] ?? { text: '', fontSize: doc.defaultFontSize }
           p.runs = [{ ...first, text: action.text }]
+        }
+        break
+      }
+
+      case 'resizeImage': {
+        for (const p of next.paragraphs) {
+          if (!p.images) continue
+          // Match by object id when we have one (live docs); otherwise by the paragraph
+          // the flag was anchored to (offline mock).
+          if (!action.objectId && !within(action.range, p)) continue
+          for (const img of p.images) {
+            if (action.objectId && img.objectId !== action.objectId) continue
+            img.widthPt = Math.round(img.widthPt * action.scale)
+            img.heightPt = Math.round(img.heightPt * action.scale)
+          }
         }
         break
       }
@@ -111,16 +135,6 @@ function forRuns(doc: DocModel, range: Range, fn: (r: TextRun) => void) {
   }
 }
 
-function toTwoColumnText(rows: string[]): string {
-  const lines: string[] = []
-  for (let i = 0; i < rows.length; i += 2) {
-    const left = (rows[i] ?? '').padEnd(22)
-    const right = rows[i + 1] ?? ''
-    lines.push(`${left}${right}`.trimEnd())
-  }
-  return lines.join('\n')
-}
-
 // ---------------------------------------------------------------------------
 // GoogleDocsBackend — the live path. Each EditAction becomes one or more Docs API
 // `batchUpdate` requests, addressed by real document indices (translated from our
@@ -132,7 +146,58 @@ export class GoogleDocsBackend implements EditBackend {
   constructor(private documentId: string) {}
 
   async apply(doc: DocModel, action: EditAction): Promise<DocModel> {
+    // A real table can't be built in one batch: its cell indices don't exist until the
+    // table is created, so it needs its own read-back-and-fill flow.
+    if (action.kind === 'bulletsToTable') return this.applyBulletsToTable(doc, action)
     await pushBatchUpdate(this.documentId, buildRequests(doc, action))
+    return fetchGoogleDoc(this.documentId)
+  }
+
+  /**
+   * Replace a run of bullets with a real Google Docs table, in two passes:
+   *  1. strip the bullet list and insert an *empty* table where it was;
+   *  2. re-read the doc to learn each cell's index, then fill the cells (highest index
+   *     first, so earlier insertions don't shift the ones still to come).
+   */
+  private async applyBulletsToTable(
+    doc: DocModel,
+    action: Extract<EditAction, { kind: 'bulletsToTable' }>,
+  ): Promise<DocModel> {
+    const bullets = doc.paragraphs.filter(
+      (p) => overlaps(action.range, p) && p.kind === 'bullet' && p.docStart != null,
+    )
+    if (bullets.length === 0) return fetchGoogleDoc(this.documentId)
+
+    const layout = tableLayout(action.rows)
+    const startIndex = bullets[0].docStart!
+    const endIndex = bullets[bullets.length - 1].docEnd! - 1 // keep one trailing newline
+
+    // Pass 1: drop the list formatting + text, then insert the empty grid at its start.
+    const setup: unknown[] = []
+    if (endIndex > startIndex) {
+      const range = { startIndex, endIndex }
+      setup.push({ deleteParagraphBullets: { range } })
+      setup.push({ deleteContentRange: { range } })
+    }
+    setup.push({
+      insertTable: {
+        rows: layout.rows,
+        columns: layout.columns,
+        location: { index: startIndex },
+      },
+    })
+    await pushBatchUpdate(this.documentId, setup)
+
+    // Pass 2: locate the new table's cells and fill them in descending-index order.
+    const raw = await fetchGoogleDocRaw(this.documentId)
+    const cellStarts = tableCellStarts(raw, startIndex)
+    const fill = cellStarts
+      .map((index, i) => ({ index, text: layout.cells[i] ?? '' }))
+      .filter((c) => c.text.length > 0)
+      .sort((a, b) => b.index - a.index)
+      .map((c) => ({ insertText: { location: { index: c.index }, text: c.text } }))
+    if (fill.length) await pushBatchUpdate(this.documentId, fill)
+
     return fetchGoogleDoc(this.documentId)
   }
 }
@@ -227,24 +292,18 @@ export function buildRequests(doc: DocModel, action: EditAction): unknown[] {
       return reqs
     }
 
-    case 'bulletsToTable': {
-      // Collapse the bullet list into a compact two-column text block (matching the mock).
-      // A real insertTable is possible but needs follow-up requests to populate each cell
-      // at computed indices — see docs/SETUP.md for that upgrade path.
-      const bullets = doc.paragraphs.filter(
-        (p) => overlaps(action.range, p) && p.kind === 'bullet' && p.docStart != null,
-      )
-      if (bullets.length === 0) return []
-      const startIndex = bullets[0].docStart!
-      const endIndex = bullets[bullets.length - 1].docEnd! - 1 // keep the final newline
-      if (endIndex <= startIndex) return []
-      const range = { startIndex, endIndex }
-      return [
-        { deleteParagraphBullets: { range } }, // strip the list formatting
-        { deleteContentRange: { range } },
-        { insertText: { location: { index: startIndex }, text: toTwoColumnText(action.rows) } },
-      ]
-    }
+    case 'bulletsToTable':
+      // Tables need a two-pass create-then-fill flow (cell indices don't exist until the
+      // table does), so GoogleDocsBackend.apply handles this action directly via
+      // applyBulletsToTable rather than emitting one-shot batch requests here.
+      return []
+
+    case 'resizeImage':
+      // The Docs API has no request to resize an existing inline image (only border edits),
+      // so this is advisory on live docs — the offline backend resizes it in the model so
+      // the recommendation is demonstrable. Re-inserting at a smaller size would need the
+      // original image URI, which the read path doesn't expose.
+      return []
   }
 }
 

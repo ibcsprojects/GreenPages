@@ -4,12 +4,20 @@
 // is identical whether analysis is local or AI-assisted.
 
 import type { DocModel, Paragraph } from '../docModel.js'
-import { paragraphText } from '../docModel.js'
+import { paragraphText, stripBulletGlyph } from '../docModel.js'
 import type { EcoImpact, Flag, Range } from './types.js'
 import { condenseLocally, looksVerbose } from './condense.js'
+import { tableLayout } from '../tableLayout.js'
 
 /** ~characters that fit on one printed line / page for impact math. */
 const CHARS_PER_LINE = 90
+
+/** Printable content area of a US-Letter page in points (8.5×11in minus 1in margins). */
+const CONTENT_WIDTH_PT = 468
+const CONTENT_HEIGHT_PT = 648
+const PAGE_AREA_PT = CONTENT_WIDTH_PT * CONTENT_HEIGHT_PT
+/** Flag images that cover more than this fraction of the page, and shrink toward it. */
+const IMAGE_AREA_LIMIT = 0.25
 
 let _fid = 0
 const fid = (t: string) => `flag-${t}-${_fid++}`
@@ -154,38 +162,56 @@ function detectPageBreaks(doc: DocModel): Flag[] {
 // ---------------------------------------------------------------------------
 function detectBulletSprawl(doc: DocModel): Flag[] {
   const flags: Flag[] = []
+  const paras = doc.paragraphs
   let i = 0
-  while (i < doc.paragraphs.length) {
-    if (doc.paragraphs[i].kind === 'bullet') {
-      let j = i
-      while (j < doc.paragraphs.length && doc.paragraphs[j].kind === 'bullet') j++
-      const bullets = doc.paragraphs.slice(i, j)
-      const rows = bullets.map(paragraphText)
-      const avgWords =
-        rows.reduce((s, t) => s + t.trim().split(/\s+/).length, 0) / rows.length
-      if (bullets.length >= 5 && avgWords <= 4) {
-        const range: Range = { start: bullets[0].start!, end: bullets[j - 1 - i].end! }
-        flags.push({
-          id: fid('bullets'),
-          type: 'bulletSprawl',
-          severity: 'low',
-          range,
-          title: `${bullets.length} short bullets`,
-          explanation:
-            'A long column of tiny bullets uses one line each. A compact table (or multi-column list) fits the same items in far less vertical space.',
-          before: `${bullets.length} bullets, 1 line each`,
-          after: `Table — ~${Math.ceil(bullets.length / 2)} rows`,
-          impact: {
-            paper: charsToPaper(Math.floor(bullets.length / 2) * CHARS_PER_LINE, doc),
-            ink: 0,
-          },
-          action: { kind: 'bulletsToTable', range, rows },
-        })
-      }
-      i = j
-    } else {
+  while (i < paras.length) {
+    if (paras[i].kind !== 'bullet') {
       i++
+      continue
     }
+    // Walk one list. Wasteful docs often put a blank line between every bullet, which must
+    // not hide the list — so we extend the run across blanks, but it still has to start and
+    // end on a real bullet. (`lastBullet` is the last non-blank item in the run.)
+    let j = i
+    let lastBullet = i
+    while (j < paras.length && (paras[j].kind === 'bullet' || isBlank(paras[j]))) {
+      if (paras[j].kind === 'bullet') lastBullet = j
+      j++
+    }
+    const span = paras.slice(i, lastBullet + 1)
+    const bullets = span.filter((p) => p.kind === 'bullet')
+    // Manual "• "/"- " bullets carry the glyph in their text; strip it for the cells.
+    const rows = bullets.map((p) => stripBulletGlyph(paragraphText(p)).trim())
+    // "Short enough to tabulate" is about how much of a line each bullet uses, not its word
+    // count: "Remote work is here to stay." is 6 words but barely a third of a line. Gate on
+    // characters so short-sentence bullets qualify, while genuinely long (paragraph-like)
+    // bullets — where a table would just make one giant cell — are left alone.
+    const lengths = rows.map((t) => t.length)
+    const avgChars = lengths.reduce((s, n) => s + n, 0) / lengths.length
+    const maxChars = Math.max(...lengths, 0)
+    if (bullets.length >= 5 && avgChars <= 50 && maxChars <= 90) {
+      // Range spans the whole list (blanks included) so converting also removes that spacing.
+      const range: Range = { start: span[0].start!, end: span[span.length - 1].end! }
+      const layout = tableLayout(rows)
+      flags.push({
+        id: fid('bullets'),
+        type: 'bulletSprawl',
+        severity: 'low',
+        range,
+        title: `${bullets.length} short bullets`,
+        explanation:
+          'A long column of tiny bullets uses one line each. A compact table fits the same items in far less vertical space.',
+        before: `${bullets.length} bullets, 1 line each`,
+        after: `Table — ${layout.rows} rows × ${layout.columns} cols`,
+        impact: {
+          // One line per bullet today vs. roughly one line per grid row in the table.
+          paper: charsToPaper(Math.max(0, bullets.length - layout.rows) * CHARS_PER_LINE, doc),
+          ink: 0,
+        },
+        action: { kind: 'bulletsToTable', range, rows },
+      })
+    }
+    i = lastBullet + 1
   }
   return flags
 }
@@ -224,6 +250,44 @@ function detectVerbose(doc: DocModel, aiRewrite: boolean): Flag[] {
   return flags
 }
 
+// ---------------------------------------------------------------------------
+// 7. Oversized images → scale down. A picture filling most of the page pushes text
+//    onto extra sheets and floods that sheet with ink when printed.
+// ---------------------------------------------------------------------------
+function detectLargeImages(doc: DocModel): Flag[] {
+  const flags: Flag[] = []
+  for (const p of doc.paragraphs) {
+    for (const img of p.images ?? []) {
+      const ratio = (img.widthPt * img.heightPt) / PAGE_AREA_PT
+      if (ratio <= IMAGE_AREA_LIMIT) continue
+      // Scale both dimensions by √(target/ratio) so the area lands near the limit.
+      const scale = Math.sqrt(IMAGE_AREA_LIMIT / ratio)
+      const newW = Math.round(img.widthPt * scale)
+      const newH = Math.round(img.heightPt * scale)
+      const pct = Math.round(ratio * 100)
+      const range: Range = { start: p.start!, end: p.end! }
+      flags.push({
+        id: fid('image'),
+        type: 'largeImage',
+        severity: ratio > 0.5 ? 'high' : 'medium',
+        range,
+        title: `Image fills ${pct}% of the page`,
+        explanation:
+          'A large image dominates the page, pushing text onto extra sheets and soaking the paper in ink when printed. Scaling it down keeps it clear while freeing space.',
+        before: `${Math.round(img.widthPt)}×${Math.round(img.heightPt)}pt — ${pct}% of page`,
+        after: `${newW}×${newH}pt — ~${Math.round(IMAGE_AREA_LIMIT * 100)}% of page`,
+        impact: {
+          // Vertical space reclaimed on the page, plus a rough ink saving from less fill.
+          paper: Math.max(0, (img.heightPt - newH) / CONTENT_HEIGHT_PT),
+          ink: 0.5 * Math.max(0, ratio - IMAGE_AREA_LIMIT),
+        },
+        action: { kind: 'resizeImage', range, objectId: img.objectId, scale },
+      })
+    }
+  }
+  return flags
+}
+
 function truncate(s: string, n = 60): string {
   const t = s.replace(/\s+/g, ' ').trim()
   return t.length > n ? t.slice(0, n - 1) + '…' : t
@@ -245,6 +309,7 @@ export function analyzeDoc(doc: DocModel, opts: AnalyzeDocOptions = {}): Flag[] 
     ...detectPageBreaks(doc),
     ...detectBulletSprawl(doc),
     ...detectVerbose(doc, opts.aiRewrite ?? false),
+    ...detectLargeImages(doc),
   ]
   return flags.sort((a, b) => a.range.start - b.range.start)
 }

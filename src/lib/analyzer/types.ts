@@ -10,6 +10,7 @@ export type FlagType =
   | 'pageBreak' // hard page break → a slim dashed rule
   | 'bulletSprawl' // many tiny bullets that a table would compress
   | 'verbose' // redundant text an AI can condense
+  | 'largeImage' // an oversized image dominating the page
 
 export type Severity = 'low' | 'medium' | 'high'
 
@@ -30,6 +31,7 @@ export type EditAction =
   | { kind: 'pageBreakToRule'; range: Range }
   | { kind: 'bulletsToTable'; range: Range; rows: string[] }
   | { kind: 'replaceText'; range: Range; text: string }
+  | { kind: 'resizeImage'; range: Range; objectId?: string; scale: number }
 
 /** Estimated environmental saving from accepting one flag. */
 export interface EcoImpact {

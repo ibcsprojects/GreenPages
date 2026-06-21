@@ -17,7 +17,15 @@ export async function geminiGenerate(prompt: string): Promise<string | null> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 512 },
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 1024,
+        // gemini-2.5-flash is a *thinking* model: left unbounded it spends the whole token
+        // budget on hidden reasoning, finishes with MAX_TOKENS and returns no visible text —
+        // making us silently fall back to the local shortener. Disable thinking so the budget
+        // goes to the actual rewrite. (This is the "limit:0" gotcha.)
+        thinkingConfig: { thinkingBudget: 0 },
+      },
     }),
   })
   if (!res.ok) {
@@ -25,8 +33,13 @@ export async function geminiGenerate(prompt: string): Promise<string | null> {
     return null
   }
   const data = (await res.json()) as {
-    candidates?: { content?: { parts?: { text?: string }[] } }[]
+    candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[]
   }
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text
-  return text ? text.trim() : null
+  if (!text) {
+    // Empty output (e.g. finishReason MAX_TOKENS) — log so this doesn't fail silently again.
+    console.warn('[GreenPages] Gemini returned no text', data.candidates?.[0]?.finishReason)
+    return null
+  }
+  return text.trim()
 }

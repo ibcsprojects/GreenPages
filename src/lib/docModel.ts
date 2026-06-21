@@ -24,10 +24,22 @@ export interface TextRun {
 
 export type ParagraphKind = 'normal' | 'bullet' | 'heading' | 'pageBreak'
 
+/** An inline image anchored in a paragraph. Sizes are the rendered dimensions in points. */
+export interface DocImage {
+  /** Google Docs inline-object id (write path). Absent in the offline mock. */
+  objectId?: string
+  /** Rendered width in points. */
+  widthPt: number
+  /** Rendered height in points. */
+  heightPt: number
+}
+
 export interface Paragraph {
   id: string
   kind: ParagraphKind
   runs: TextRun[]
+  /** Inline images anchored in this paragraph, if any. */
+  images?: DocImage[]
   /** Google Docs structural extent [docStart, docEnd) including the trailing newline
    *  (read path). Used for paragraph-level edits like deleting blank lines. */
   docStart?: number
@@ -49,6 +61,15 @@ export interface DocModel {
 /** Concatenated text of a paragraph's runs. */
 export function paragraphText(p: Paragraph): string {
   return p.runs.map((r) => r.text).join('')
+}
+
+/** A leading bullet glyph + space, for lists typed by hand rather than via Docs' list tool
+ *  (the Docs API marks those paragraphs with a `bullet` field; these have only the glyph). */
+export const BULLET_GLYPH = /^\s*[•·▪◦‣⁃∙*+-]\s+/
+
+/** Strip a leading manual bullet glyph so table cells don't carry "• " into the grid. */
+export function stripBulletGlyph(text: string): string {
+  return text.replace(BULLET_GLYPH, '')
 }
 
 /** Whole-document flat text, paragraphs joined by newlines. */
@@ -100,6 +121,7 @@ const run = (text: string, extra: Partial<TextRun> = {}): TextRun => ({
  *  - a hard page break (pageBreak)
  *  - eight two-word bullets (bulletSprawl)
  *  - a bloated redundant paragraph (verbose)
+ *  - an oversized chart image (largeImage)
  */
 export const SAMPLE_DOC: DocModel = rebuildOffsets({
   id: 'sample-doc',
@@ -108,6 +130,13 @@ export const SAMPLE_DOC: DocModel = rebuildOffsets({
   linesPerPage: 46,
   paragraphs: [
     { id: pid(), kind: 'heading', runs: [run('Q3 Sustainability Report', { fontSize: 20, bold: true })] },
+    {
+      id: pid(),
+      kind: 'normal',
+      runs: [run('')],
+      // ~468×360pt ≈ 56% of the printable page — trips the largeImage detector.
+      images: [{ objectId: 'img-cover', widthPt: 468, heightPt: 360 }],
+    },
     {
       id: pid(),
       kind: 'normal',

@@ -2,8 +2,8 @@
 // DocModel (with Docs index anchors for write-back), and pushing batchUpdate edits.
 // All Chrome/identity specifics live here so docBackend stays a pure edit-translation layer.
 
-import type { DocModel, Paragraph, TextRun } from './docModel'
-import { rebuildOffsets } from './docModel'
+import type { DocImage, DocModel, Paragraph, TextRun } from './docModel'
+import { BULLET_GLYPH, rebuildOffsets } from './docModel'
 
 const DOCS_GET = (id: string) => `https://docs.googleapis.com/v1/documents/${id}`
 const DOCS_BATCH = (id: string) =>
@@ -60,10 +60,38 @@ async function authedFetch(url: string, init: RequestInit = {}): Promise<Respons
 }
 
 // --- Read ------------------------------------------------------------------
-export async function fetchGoogleDoc(docId: string): Promise<DocModel> {
+/** Fetch the raw Docs API document. Exposed so the table flow can read cell indices that
+ *  our DocModel deliberately drops (it doesn't model tables). */
+export async function fetchGoogleDocRaw(docId: string): Promise<ApiDoc> {
   const res = await authedFetch(DOCS_GET(docId))
   if (!res.ok) throw new Error(`documents.get ${res.status}`)
-  return mapApiDoc(docId, (await res.json()) as ApiDoc)
+  return (await res.json()) as ApiDoc
+}
+
+export async function fetchGoogleDoc(docId: string): Promise<DocModel> {
+  return mapApiDoc(docId, await fetchGoogleDocRaw(docId))
+}
+
+/**
+ * Insertion indices (row-major) for the cells of a freshly inserted table — the start of
+ * each cell's empty paragraph, which is where cell text goes. Picks the first table at or
+ * after `atOrAfter` (the index we inserted at), falling back to the last table found.
+ */
+export function tableCellStarts(api: ApiDoc, atOrAfter: number): number[] {
+  const content = api.body?.content ?? []
+  const tables = content
+    .filter((el) => el.table && el.startIndex != null)
+    .sort((a, b) => a.startIndex! - b.startIndex!)
+  const tbl = tables.find((t) => t.startIndex! >= atOrAfter) ?? tables[tables.length - 1]
+  const starts: number[] = []
+  for (const row of tbl?.table?.tableRows ?? []) {
+    for (const cell of row.tableCells ?? []) {
+      const para = (cell.content ?? []).find((c) => c.paragraph)
+      const idx = para?.startIndex ?? cell.startIndex
+      if (idx != null) starts.push(idx)
+    }
+  }
+  return starts
 }
 
 // --- Write -----------------------------------------------------------------
@@ -97,20 +125,47 @@ interface ApiElement {
   endIndex?: number
   textRun?: { content?: string; textStyle?: ApiTextStyle }
   pageBreak?: unknown
+  inlineObjectElement?: { inlineObjectId?: string }
+}
+interface ApiDimension {
+  magnitude?: number
+  unit?: string
+}
+interface ApiInlineObject {
+  inlineObjectProperties?: {
+    embeddedObject?: { size?: { height?: ApiDimension; width?: ApiDimension } }
+  }
 }
 interface ApiParagraph {
   elements?: ApiElement[]
   paragraphStyle?: { namedStyleType?: string }
   bullet?: unknown
 }
+interface ApiTableCell {
+  startIndex?: number
+  endIndex?: number
+  content?: ApiStructural[]
+}
+interface ApiTableRow {
+  startIndex?: number
+  endIndex?: number
+  tableCells?: ApiTableCell[]
+}
+interface ApiTable {
+  rows?: number
+  columns?: number
+  tableRows?: ApiTableRow[]
+}
 interface ApiStructural {
   startIndex?: number
   endIndex?: number
   paragraph?: ApiParagraph
+  table?: ApiTable
 }
-interface ApiDoc {
+export interface ApiDoc {
   title?: string
   body?: { content?: ApiStructural[] }
+  inlineObjects?: Record<string, ApiInlineObject>
 }
 
 function mapApiDoc(docId: string, api: ApiDoc): DocModel {
@@ -118,7 +173,7 @@ function mapApiDoc(docId: string, api: ApiDoc): DocModel {
   let i = 0
   for (const el of api.body?.content ?? []) {
     if (!el.paragraph) continue // skip tables / sectionBreaks we don't model
-    paragraphs.push(mapParagraph(`p${i++}`, el, el.paragraph))
+    paragraphs.push(mapParagraph(`p${i++}`, el, el.paragraph, api.inlineObjects ?? {}))
   }
   if (paragraphs.length === 0) {
     paragraphs.push({ id: 'p0', kind: 'normal', runs: [{ text: '', fontSize: DEFAULT_FONT }] })
@@ -132,23 +187,59 @@ function mapApiDoc(docId: string, api: ApiDoc): DocModel {
   })
 }
 
-function mapParagraph(id: string, el: ApiStructural, para: ApiParagraph): Paragraph {
+function mapParagraph(
+  id: string,
+  el: ApiStructural,
+  para: ApiParagraph,
+  inlineObjects: Record<string, ApiInlineObject>,
+): Paragraph {
   const elements = para.elements ?? []
   const named = para.paragraphStyle?.namedStyleType ?? ''
+  const runs: TextRun[] = elements.filter((e) => e.textRun).map(mapRun)
+  const images = mapImages(elements, inlineObjects)
+  if (runs.length === 0) {
+    // Empty / break-only paragraphs still need a run so the analyzer + offsets work.
+    runs.push({ text: '', fontSize: DEFAULT_FONT, docStart: el.startIndex })
+  }
+
+  // A paragraph is a list item if Docs marks it (`para.bullet`, set by the list tool) OR it
+  // was typed as a manual bullet ("• …", "- …"). The latter has no `bullet` field, so without
+  // the glyph check those lists would read as plain paragraphs and never flag as sprawl.
+  const text = runs.map((r) => r.text).join('')
   const kind: Paragraph['kind'] = elements.some((e) => e.pageBreak)
     ? 'pageBreak'
-    : para.bullet
+    : para.bullet || BULLET_GLYPH.test(text)
       ? 'bullet'
       : named.startsWith('HEADING') || named === 'TITLE'
         ? 'heading'
         : 'normal'
 
-  const runs: TextRun[] = elements.filter((e) => e.textRun).map(mapRun)
-  if (runs.length === 0) {
-    // Empty / break-only paragraphs still need a run so the analyzer + offsets work.
-    runs.push({ text: '', fontSize: DEFAULT_FONT, docStart: el.startIndex })
+  return {
+    id,
+    kind,
+    runs,
+    ...(images.length ? { images } : {}),
+    docStart: el.startIndex,
+    docEnd: el.endIndex,
   }
-  return { id, kind, runs, docStart: el.startIndex, docEnd: el.endIndex }
+}
+
+/** Collect inline images in a paragraph, resolving each element's size from the doc's
+ *  inlineObjects map. Sizes come back from the API in points. */
+function mapImages(
+  elements: ApiElement[],
+  inlineObjects: Record<string, ApiInlineObject>,
+): DocImage[] {
+  const images: DocImage[] = []
+  for (const e of elements) {
+    const objectId = e.inlineObjectElement?.inlineObjectId
+    if (!objectId) continue
+    const size = inlineObjects[objectId]?.inlineObjectProperties?.embeddedObject?.size
+    const widthPt = size?.width?.magnitude
+    const heightPt = size?.height?.magnitude
+    if (widthPt && heightPt) images.push({ objectId, widthPt, heightPt })
+  }
+  return images
 }
 
 function mapRun(e: ApiElement): TextRun {
