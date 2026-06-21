@@ -56,12 +56,12 @@ export class MockDocsBackend implements EditBackend {
       }
 
       case 'pageBreakToRule': {
+        // Offline stand-in for the live border: drop the page break, leaving an empty
+        // paragraph where GoogleDocsBackend draws a real horizontal-line border.
         const p = next.paragraphs.find((x) => within(action.range, x))
         if (p) {
           p.kind = 'normal'
-          p.runs = [
-            { text: '— — — — — — — — — — — — — — — — —', fontSize: doc.defaultFontSize },
-          ]
+          p.runs = [{ text: '', fontSize: doc.defaultFontSize }]
         }
         break
       }
@@ -322,7 +322,9 @@ export function buildRequests(doc: DocModel, action: EditAction): unknown[] {
     }
 
     case 'pageBreakToRule': {
-      // Delete the page-break content (keeping the paragraph's newline) and drop in a rule.
+      // The Docs API can't insert a real horizontalRule element, so render a horizontal
+      // line by deleting the page break (keeping the paragraph's newline) and giving the
+      // now-empty paragraph a bottom border — visually the same as Insert → Horizontal line.
       const p = doc.paragraphs.find(
         (x) => within(action.range, x) && x.docStart != null && x.docEnd != null,
       )
@@ -331,8 +333,13 @@ export function buildRequests(doc: DocModel, action: EditAction): unknown[] {
       const endIndex = p.docEnd! - 1 // preserve the trailing newline
       const reqs: unknown[] = []
       if (endIndex > startIndex) reqs.push({ deleteContentRange: { range: { startIndex, endIndex } } })
+      // After the delete the paragraph is just its newline at startIndex; border that paragraph.
       reqs.push({
-        insertText: { location: { index: startIndex }, text: RULE_TEXT },
+        updateParagraphStyle: {
+          range: { startIndex, endIndex: startIndex + 1 },
+          paragraphStyle: { borderBottom: HORIZONTAL_RULE_BORDER },
+          fields: 'borderBottom',
+        },
       })
       return reqs
     }
@@ -350,4 +357,11 @@ export function buildRequests(doc: DocModel, action: EditAction): unknown[] {
   }
 }
 
-const RULE_TEXT = '— — — — — — — — — — — — — — — — —'
+// A thin solid grey paragraph bottom-border that reads as a horizontal line, matching the
+// look of Google Docs' own Insert → Horizontal line.
+const HORIZONTAL_RULE_BORDER = {
+  color: { color: { rgbColor: { red: 0.6, green: 0.6, blue: 0.6 } } },
+  width: { magnitude: 1, unit: 'PT' },
+  padding: { magnitude: 0, unit: 'PT' },
+  dashStyle: 'SOLID',
+}

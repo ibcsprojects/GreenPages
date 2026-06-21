@@ -146,9 +146,9 @@ function detectPageBreaks(doc: DocModel): Flag[] {
         range,
         title: 'Hard page break',
         explanation:
-          'A forced page break can leave most of a sheet blank. A thin divider line separates sections without burning a whole page.',
+          'A forced page break can leave most of a sheet blank. A horizontal line separates sections without burning a whole page.',
         before: '⤓ Page break (rest of sheet blank)',
-        after: '— — — — — divider line — — — — —',
+        after: '──────  horizontal line  ──────',
         impact: { paper: 0.4, ink: 0 },
         action: { kind: 'pageBreakToRule', range },
       })
