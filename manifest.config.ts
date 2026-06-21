@@ -29,7 +29,12 @@ export default defineManifest({
   },
   oauth2: {
      client_id: '607806555304-5fqrvu6f75121qj69p68h1aositrhp8s.apps.googleusercontent.com',
-     scopes: ['https://www.googleapis.com/auth/documents'],
+     // documents: read/write the doc. drive.readonly: export the doc to PDF so we can count
+     // its real rendered pages (the Docs API exposes no page count).
+     scopes: [
+       'https://www.googleapis.com/auth/documents',
+       'https://www.googleapis.com/auth/drive.readonly',
+     ],
    },
   content_scripts: [
     {

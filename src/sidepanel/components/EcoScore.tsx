@@ -1,12 +1,11 @@
 import { useStore } from '../state/store'
 import { totalImpact } from '../../lib/analyzer/rules'
-import { estimatePages } from '../../lib/pageEstimate'
 
 export function EcoScore() {
   const flags = useStore((s) => s.flags)
-  const doc = useStore((s) => s.doc)
   const impact = totalImpact(flags)
-  const pages = doc ? estimatePages(doc).pages : 0
+  // Page count comes from the worker (exact via PDF export on a live doc, else estimated).
+  const pages = useStore((s) => s.pages)
 
   // A simple 0–100 score: fewer outstanding flags = greener.
   const score = Math.max(0, Math.min(100, 100 - flags.length * 8))

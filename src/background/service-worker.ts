@@ -6,7 +6,7 @@ import { SAMPLE_DOC, flatten, type DocModel } from '../lib/docModel'
 import type { Flag } from '../lib/analyzer/types'
 import { analyze } from '../lib/analyzer/client'
 import { MockDocsBackend, GoogleDocsBackend, type EditBackend } from '../lib/docBackend'
-import { getActiveGoogleDocId, fetchGoogleDoc } from '../lib/googleDocs'
+import { getActiveGoogleDocId, fetchGoogleDoc, fetchDocPageCount } from '../lib/googleDocs'
 import { estimatePages, lineLocation } from '../lib/pageEstimate'
 import {
   DEFAULT_SETTINGS,
@@ -20,12 +20,15 @@ interface State {
   flags: Flag[]
   dismissed: Set<string>
   settings: Settings
+  /** Current page count: exact (live PDF export) when on a doc, else the heuristic. */
+  pages: number
 }
 
 // Defaults to the offline sample + in-memory backend. When the panel opens on a real
 // Google Doc, ensureDoc() swaps in the live document and the Docs API backend.
 let backend: EditBackend = new MockDocsBackend()
 let liveLoaded = false
+let liveDocId: string | null = null
 // Whether the current analysis reflects the user's live doc or the bundled sample, plus a
 // heads-up to show when we wanted the live doc but couldn't open it (so a failed sign-in /
 // OAuth mismatch / Docs error is visible instead of silently analyzing the sample).
@@ -37,6 +40,7 @@ const state: State = {
   flags: [],
   dismissed: new Set(),
   settings: { ...DEFAULT_SETTINGS },
+  pages: 1,
 }
 
 async function loadSettings() {
@@ -67,6 +71,7 @@ async function ensureDoc() {
     state.doc = await fetchGoogleDoc(docId)
     backend = new GoogleDocsBackend(docId)
     liveLoaded = true
+    liveDocId = docId
     docSource = 'live'
     loadNotice = null
   } catch (err) {
@@ -86,6 +91,22 @@ async function reanalyze() {
     backendUrl: state.settings.backendUrl,
   })
   state.flags = flags.filter((f) => !state.dismissed.has(f.id))
+  await refreshPages()
+}
+
+// Exact page count from a live PDF export (matches what actually prints); falls back to the
+// heuristic for the offline sample or if the export fails. Runs after every (re)analysis so
+// the header and print modal reflect edits.
+async function refreshPages() {
+  if (liveLoaded && liveDocId) {
+    try {
+      state.pages = await fetchDocPageCount(liveDocId)
+      return
+    } catch (err) {
+      console.warn('[GreenPages] PDF page count failed, using estimate:', err)
+    }
+  }
+  state.pages = estimatePages(state.doc).pages
 }
 
 function visibleFlags(): Flag[] {
@@ -100,6 +121,7 @@ function stateMessage(): Msg {
     dismissed: [...state.dismissed],
     settings: state.settings,
     docSource,
+    pages: state.pages,
     ...(loadNotice ? { notice: loadNotice } : {}),
   }
 }
@@ -185,10 +207,9 @@ onMessage(async (msg: Msg, sender) => {
         await ensureDoc()
         await reanalyze()
       }
-      const { pages } = estimatePages(state.doc)
       return {
         type: 'PRINT_SUMMARY',
-        pages,
+        pages: state.pages,
         unresolved: visibleFlags().map((f) => ({ type: f.type, title: f.title })),
         settings: state.settings,
       } satisfies Msg

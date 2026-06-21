@@ -32,6 +32,8 @@ export type Msg =
       settings: Settings
       /** Whether we're analyzing the user's live Google Doc or the offline sample. */
       docSource?: 'live' | 'sample'
+      /** Current page count — exact from a live PDF export, else the heuristic estimate. */
+      pages?: number
       /** A user-facing heads-up, e.g. "couldn't open your doc, showing a sample". */
       notice?: string
     }

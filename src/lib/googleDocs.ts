@@ -8,6 +8,8 @@ import { BULLET_GLYPH, rebuildOffsets } from './docModel'
 const DOCS_GET = (id: string) => `https://docs.googleapis.com/v1/documents/${id}`
 const DOCS_BATCH = (id: string) =>
   `https://docs.googleapis.com/v1/documents/${id}:batchUpdate`
+const DRIVE_EXPORT_PDF = (id: string) =>
+  `https://www.googleapis.com/drive/v3/files/${id}/export?mimeType=application/pdf`
 
 const DEFAULT_FONT = 11
 
@@ -92,6 +94,44 @@ export function tableCellStarts(api: ApiDoc, atOrAfter: number): number[] {
     }
   }
   return starts
+}
+
+// --- Exact page count ------------------------------------------------------
+/**
+ * The real number of printed pages, by exporting the doc to PDF (exactly how Google
+ * paginates it on print) and counting pages — the Docs API itself returns no page count.
+ * Throws on auth/network failure so the caller can fall back to the heuristic estimate.
+ */
+export async function fetchDocPageCount(docId: string): Promise<number> {
+  const res = await authedFetch(DRIVE_EXPORT_PDF(docId))
+  if (!res.ok) throw new Error(`drive export ${res.status}`)
+  const count = countPdfPages(await res.arrayBuffer())
+  if (count <= 0) throw new Error('could not read page count from exported PDF')
+  return count
+}
+
+/**
+ * Count pages in a PDF's bytes without a parser. The page-tree root carries `/Count N`
+ * (total leaf pages); we read it from any `/Type /Pages` dictionary and take the largest.
+ * If that's unavailable (e.g. compressed object streams), fall back to counting `/Type
+ * /Page` leaf objects. Google Docs exports keep page objects in plain (uncompressed) form.
+ */
+export function countPdfPages(bytes: ArrayBuffer): number {
+  // Latin1 maps each byte to one char, so the ASCII PDF structure survives intact.
+  const text = new TextDecoder('latin1').decode(bytes)
+  let fromCount = 0
+  const pagesDict = /\/Type\s*\/Pages\b/g
+  let m: RegExpExecArray | null
+  while ((m = pagesDict.exec(text))) {
+    // /Count and /Type can appear in either order within the same small dictionary.
+    const near = text.slice(Math.max(0, m.index - 200), m.index + 200)
+    const c = near.match(/\/Count\s+(\d+)/)
+    if (c) fromCount = Math.max(fromCount, parseInt(c[1], 10))
+  }
+  if (fromCount > 0) return fromCount
+  // Leaf pages are `/Type /Page` but not `/Type /Pages` — exclude the trailing 's'/letters.
+  const leaves = text.match(/\/Type\s*\/Page(?![s\w])/g)
+  return leaves ? leaves.length : 0
 }
 
 // --- Write -----------------------------------------------------------------
