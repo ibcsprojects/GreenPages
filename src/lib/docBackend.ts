@@ -47,7 +47,11 @@ export class MockDocsBackend implements EditBackend {
 
       case 'removeBlankLines': {
         const blanks = next.paragraphs.filter(
-          (p) => within(action.range, p) && p.kind !== 'pageBreak',
+          (p) =>
+            within(action.range, p) &&
+            p.kind !== 'pageBreak' &&
+            p.kind !== 'table' &&
+            !p.images?.length,
         )
         // keep the first blank, drop the rest
         const drop = new Set(blanks.slice(1).map((p) => p.id))
@@ -331,7 +335,12 @@ export function buildRequests(doc: DocModel, action: EditAction): unknown[] {
     case 'removeBlankLines': {
       // Keep the first blank line, delete the structural extent of the rest (text + newline).
       const blanks = doc.paragraphs.filter(
-        (p) => within(action.range, p) && p.kind !== 'pageBreak' && p.docStart != null,
+        (p) =>
+          within(action.range, p) &&
+          p.kind !== 'pageBreak' &&
+          p.kind !== 'table' &&
+          p.docStart != null &&
+          !p.images?.length,
       )
       const drop = blanks.slice(1)
       if (drop.length === 0) return []

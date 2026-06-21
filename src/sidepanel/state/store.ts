@@ -23,6 +23,8 @@ interface PanelState {
   init: () => Promise<void>
   reanalyze: () => Promise<void>
   apply: (flagId: string, overrideText?: string) => Promise<void>
+  /** Apply every outstanding flag in one go. */
+  applyAll: () => Promise<void>
   dismiss: (flagId: string) => Promise<void>
   reveal: (flagId: string) => Promise<void>
   updateSettings: (s: Partial<Settings>) => Promise<void>
@@ -97,6 +99,16 @@ export const useStore = create<PanelState>((set, get) => ({
       const busy = { ...get().busy }
       delete busy[flagId]
       set({ busy })
+    }
+  },
+
+  applyAll: async () => {
+    // `loading` drives the panel's busy state while the worker applies every fix in turn.
+    set({ loading: true, error: null })
+    try {
+      handleResponse(set, await sendMessage<Msg>({ type: 'APPLY_ALL' }))
+    } catch (err) {
+      set({ error: errMessage(err), loading: false })
     }
   },
 

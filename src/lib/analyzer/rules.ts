@@ -29,6 +29,10 @@ function charsToPaper(chars: number, doc: DocModel): number {
 }
 
 function isBlank(p: Paragraph): boolean {
+  // Images and tables sit in paragraphs with no text — they are NOT blank lines, and must
+  // never be swept into a blank-run collapse (that would delete the image/table).
+  if (p.images && p.images.length > 0) return false
+  if (p.kind === 'table') return false
   return paragraphText(p).trim().length === 0 && p.kind !== 'pageBreak'
 }
 

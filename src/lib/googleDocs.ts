@@ -233,8 +233,22 @@ function mapApiDoc(docId: string, api: ApiDoc): DocModel {
   const paragraphs: Paragraph[] = []
   let i = 0
   for (const el of api.body?.content ?? []) {
-    if (!el.paragraph) continue // skip tables / sectionBreaks we don't model
-    paragraphs.push(mapParagraph(`p${i++}`, el, el.paragraph, api.inlineObjects ?? {}))
+    if (el.paragraph) {
+      paragraphs.push(mapParagraph(`p${i++}`, el, el.paragraph, api.inlineObjects ?? {}))
+    } else if (el.table) {
+      // We don't model a table's cells, but it MUST appear in the paragraph list as a
+      // non-blank element carrying its real doc range — otherwise the paragraphs either
+      // side of it look adjacent and a blank-run / bullet-run collapse would delete the
+      // table along with them.
+      paragraphs.push({
+        id: `t${i++}`,
+        kind: 'table',
+        runs: [{ text: '', fontSize: DEFAULT_FONT, docStart: el.startIndex }],
+        docStart: el.startIndex,
+        docEnd: el.endIndex,
+      })
+    }
+    // else: sectionBreak / TOC etc. — still skipped (no destructive edits target them).
   }
   if (paragraphs.length === 0) {
     paragraphs.push({ id: 'p0', kind: 'normal', runs: [{ text: '', fontSize: DEFAULT_FONT }] })

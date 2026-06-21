@@ -88,12 +88,18 @@ async function ensureDoc() {
 }
 
 async function reanalyze() {
+  await reanalyzeFlags()
+  await refreshPages()
+}
+
+// Re-detect flags only (no page export). Apply-all calls this between edits so it doesn't
+// pay for a PDF page count on every step — it refreshes pages once when the run finishes.
+async function reanalyzeFlags() {
   const flags = await analyze(state.doc, {
     useAI: state.settings.useAI,
     backendUrl: state.settings.backendUrl,
   })
   state.flags = flags.filter((f) => !state.dismissed.has(f.id))
-  await refreshPages()
 }
 
 // Exact page count from a live PDF export (matches what actually prints); falls back to the
@@ -174,6 +180,32 @@ onMessage(async (msg: Msg, sender) => {
         state.dismissed.add(flag.id)
         await reanalyze()
       }
+      return stateMessage()
+    }
+
+    case 'APPLY_ALL': {
+      // Apply fixes one at a time, re-detecting between each so every edit runs against a
+      // fresh, consistent document (the live backend re-reads after each edit). Applying a
+      // fix resolves its flag, so the list shrinks; the guard bounds pathological cases.
+      let guard = 0
+      while (state.flags.length > 0 && guard < 200) {
+        guard++
+        const before = state.flags.length
+        const flag = state.flags[0]
+        try {
+          state.doc = await backend.apply(state.doc, flag.action)
+        } catch (err) {
+          console.warn('[GreenPages] apply-all: a fix failed, skipping it:', err)
+        }
+        await reanalyzeFlags() // no page export on each step — done once below
+        if (state.flags.length >= before) {
+          // The fix didn't clear its flag (e.g. apply failed). Skip it so the rest proceed;
+          // it keeps the same id while unresolved, so dismissing it sticks for this run.
+          state.dismissed.add(flag.id)
+          state.flags = state.flags.filter((f) => f.id !== flag.id)
+        }
+      }
+      await refreshPages()
       return stateMessage()
     }
 

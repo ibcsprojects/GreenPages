@@ -260,6 +260,72 @@ describe('wideMargins detection', () => {
   })
 })
 
+describe('blank-run detection vs. images', () => {
+  const para = (over: Partial<DocModel['paragraphs'][number]>): DocModel['paragraphs'][number] => ({
+    id: Math.random().toString(36).slice(2),
+    kind: 'normal',
+    runs: [{ text: '', fontSize: 11 }],
+    ...over,
+  })
+  const doc = (paras: DocModel['paragraphs']): DocModel =>
+    rebuildOffsets({ id: 'd', title: 't', defaultFontSize: 11, linesPerPage: 46, paragraphs: paras })
+
+  it('does not treat an image-bearing paragraph as a blank line', () => {
+    // blank, image, blank — the image breaks the run, so there is no 2-in-a-row blank pair.
+    const d = doc([
+      para({ runs: [{ text: '', fontSize: 11 }] }),
+      para({ images: [{ objectId: 'img', widthPt: 100, heightPt: 80 }] }),
+      para({ runs: [{ text: '', fontSize: 11 }] }),
+    ])
+    expect(analyzeDoc(d).some((f) => f.type === 'doubleSpacing')).toBe(false)
+  })
+
+  it('collapses real blank runs without deleting a nearby image', async () => {
+    const d = doc([
+      para({ runs: [{ text: 'Intro', fontSize: 11 }] }),
+      para({ runs: [{ text: '', fontSize: 11 }] }),
+      para({ runs: [{ text: '', fontSize: 11 }] }),
+      para({ images: [{ objectId: 'img', widthPt: 100, heightPt: 80 }] }),
+      para({ runs: [{ text: 'Body', fontSize: 11 }] }),
+    ])
+    const f = analyzeDoc(d).find((x) => x.type === 'doubleSpacing')
+    expect(f).toBeDefined() // the two real blanks are still flagged
+    const next = await new MockDocsBackend().apply(d, f!.action)
+    // The image survives the collapse.
+    expect(next.paragraphs.some((p) => p.images?.some((i) => i.objectId === 'img'))).toBe(true)
+  })
+
+  it('does not treat a table as a blank line, even between blanks', () => {
+    // blank, table, blank — the table breaks the run, so there is no 2-in-a-row blank pair.
+    const d = doc([
+      para({ runs: [{ text: '', fontSize: 11 }] }),
+      para({ kind: 'table' }),
+      para({ runs: [{ text: '', fontSize: 11 }] }),
+    ])
+    expect(analyzeDoc(d).some((x) => x.type === 'doubleSpacing')).toBe(false)
+  })
+
+  it('collapses blanks on each side of a table without deleting the table', async () => {
+    const d = doc([
+      para({ runs: [{ text: 'A', fontSize: 11 }] }),
+      para({ runs: [{ text: '', fontSize: 11 }] }),
+      para({ runs: [{ text: '', fontSize: 11 }] }),
+      para({ kind: 'table' }),
+      para({ runs: [{ text: '', fontSize: 11 }] }),
+      para({ runs: [{ text: '', fontSize: 11 }] }),
+      para({ runs: [{ text: 'B', fontSize: 11 }] }),
+    ])
+    // Two separate runs (before and after the table), neither spanning it.
+    const flags = analyzeDoc(d).filter((x) => x.type === 'doubleSpacing')
+    expect(flags.length).toBe(2)
+    // Applying either collapse must leave the table intact (apply each to the original doc).
+    for (const f of flags) {
+      const next = await new MockDocsBackend().apply(d, f.action)
+      expect(next.paragraphs.some((p) => p.kind === 'table')).toBe(true)
+    }
+  })
+})
+
 describe('wideIndents detection', () => {
   const indentDoc = (
     paras: { text: string; kind?: 'normal' | 'bullet' | 'heading'; indentStartPt?: number; indentEndPt?: number }[],

@@ -43,6 +43,7 @@ export type Msg =
   | { type: 'ERROR'; message: string }
   | { type: 'REANALYZE' }
   | { type: 'APPLY_FLAG'; flagId: string; overrideText?: string }
+  | { type: 'APPLY_ALL' }
   | { type: 'DISMISS_FLAG'; flagId: string }
   | { type: 'REVEAL_FLAG'; flagId: string }
   | { type: 'UPDATE_SETTINGS'; settings: Partial<Settings> }

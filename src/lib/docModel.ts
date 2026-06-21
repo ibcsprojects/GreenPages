@@ -22,7 +22,7 @@ export interface TextRun {
   end?: number
 }
 
-export type ParagraphKind = 'normal' | 'bullet' | 'heading' | 'pageBreak'
+export type ParagraphKind = 'normal' | 'bullet' | 'heading' | 'pageBreak' | 'table'
 
 /** An inline image anchored in a paragraph. Sizes are the rendered dimensions in points. */
 export interface DocImage {
