@@ -22,6 +22,22 @@ function FlagChip({ flag }: { flag: Flag }) {
   )
 }
 
+/** A small chevron that rotates to point down when its card is open. */
+function Chevron({ expanded }: { expanded: boolean }) {
+  return (
+    <svg
+      className={`h-4 w-4 shrink-0 text-bark-700/40 transition-transform ${expanded ? 'rotate-180' : ''}`}
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      aria-hidden
+    >
+      <path d="M6 8l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 /** Short "~N saved / ink↓" summary for one flag's impact. */
 function impactLabel(flag: Flag): string {
   const paper = flag.impact.paper
@@ -33,12 +49,15 @@ function impactLabel(flag: Flag): string {
 }
 
 /**
- * The interactive body of a single issue: title, explanation, before→after preview and
- * the apply / dismiss / edit controls. Reused by both the single and grouped cards.
+ * The interactive body of a single issue: explanation, before→after preview and the
+ * apply / dismiss / edit controls. Reused by both the single and grouped cards. The
+ * heading is optional — single cards already show the title in their collapsed header,
+ * while grouped sub-cards pass `showTitle` to label each stacked issue.
  */
-function FlagIssueBody({ flag }: { flag: Flag }) {
+function FlagIssueBody({ flag, showTitle = false }: { flag: Flag; showTitle?: boolean }) {
   const apply = useStore((s) => s.apply)
   const dismiss = useStore((s) => s.dismiss)
+  const reveal = useStore((s) => s.reveal)
   const busy = useStore((s) => s.busy[flag.id])
 
   // Verbose flags expose an editable AI suggestion before applying.
@@ -47,8 +66,10 @@ function FlagIssueBody({ flag }: { flag: Flag }) {
 
   return (
     <>
-      <h3 className="text-sm font-semibold text-bark-900">{flag.title}</h3>
-      <p className="mt-0.5 text-xs leading-relaxed text-bark-700/80">{flag.explanation}</p>
+      {showTitle && <h3 className="text-sm font-semibold text-bark-900">{flag.title}</h3>}
+      <p className={`text-xs leading-relaxed text-bark-700/80 ${showTitle ? 'mt-0.5' : ''}`}>
+        {flag.explanation}
+      </p>
 
       <div className="mt-2 space-y-1 rounded-lg bg-leaf-50 p-2 text-xs">
         <div className="flex gap-1.5">
@@ -95,33 +116,86 @@ function FlagIssueBody({ flag }: { flag: Flag }) {
           </button>
         )}
       </div>
+
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          reveal(flag.id)
+        }}
+        className="mt-2 flex items-center gap-1 text-[11px] font-medium text-bark-700/55 transition hover:text-leaf-700"
+      >
+        <span aria-hidden>↧</span> Show in document
+      </button>
     </>
   )
 }
 
-/** A single flag on its own snippet. */
-export function FlagCard({ flag }: { flag: Flag }) {
+/** A single flag on its own snippet — compact by default, expands on click. */
+export function FlagCard({
+  flag,
+  expanded,
+  onToggle,
+}: {
+  flag: Flag
+  expanded: boolean
+  onToggle: (open: boolean) => void
+}) {
   const reveal = useStore((s) => s.reveal)
   const impact = impactLabel(flag)
 
+  // Opening a card also scrolls the live document to its paragraph, so the user sees
+  // the flagged spot in context the moment they expand it.
+  const toggle = () => {
+    const next = !expanded
+    onToggle(next)
+    if (next) reveal(flag.id)
+  }
+
   return (
-    <div
-      onClick={() => reveal(flag.id)}
-      title="Scroll the document to this paragraph"
-      className="cursor-pointer rounded-xl border border-leaf-100 bg-white p-3 shadow-sm transition hover:border-leaf-300 hover:shadow-md"
-    >
-      <div className="mb-1.5 flex items-center gap-2">
-        <span className={`h-2 w-2 rounded-full ${SEVERITY_DOT[flag.severity]}`} aria-hidden />
-        <FlagChip flag={flag} />
-        {impact && <span className="ml-auto text-[11px] text-bark-700/60">{impact}</span>}
-      </div>
-      <FlagIssueBody flag={flag} />
+    <div className="overflow-hidden rounded-xl border border-leaf-100 bg-white shadow-sm transition hover:border-leaf-300 hover:shadow-md">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={expanded}
+        className="flex w-full items-center gap-2 px-3 py-2.5 text-left"
+      >
+        <span
+          className={`h-2 w-2 shrink-0 rounded-full ${SEVERITY_DOT[flag.severity]}`}
+          aria-hidden
+        />
+        <span className="min-w-0 flex-1 truncate text-sm">
+          <span className="font-semibold text-bark-900">{flag.title}</span>
+          {!expanded && <span className="text-bark-700/60"> – {flag.explanation}</span>}
+        </span>
+        {!expanded && impact && (
+          <span className="shrink-0 text-[11px] text-bark-700/60">{impact}</span>
+        )}
+        <Chevron expanded={expanded} />
+      </button>
+
+      {expanded && (
+        <div className="border-t border-leaf-100 px-3 pb-3 pt-2.5">
+          <div className="mb-1.5 flex items-center gap-2">
+            <FlagChip flag={flag} />
+            {impact && <span className="ml-auto text-[11px] text-bark-700/60">{impact}</span>}
+          </div>
+          <FlagIssueBody flag={flag} />
+        </div>
+      )}
     </div>
   )
 }
 
-/** Several flags that share one snippet, stacked under a single card. */
-export function FlagGroupCard({ flags }: { flags: Flag[] }) {
+/** Several flags that share one snippet, stacked under a single card. Compact by default. */
+export function FlagGroupCard({
+  flags,
+  expanded,
+  onToggle,
+}: {
+  flags: Flag[]
+  expanded: boolean
+  onToggle: (open: boolean) => void
+}) {
   const reveal = useStore((s) => s.reveal)
 
   const topSeverity = flags.reduce<Severity>(
@@ -134,35 +208,48 @@ export function FlagGroupCard({ flags }: { flags: Flag[] }) {
   if (paper > 0.001) totalParts.push(`~${formatPages(paper)} saved`)
   if (ink > 0.001) totalParts.push('ink↓')
 
+  const toggle = () => {
+    const next = !expanded
+    onToggle(next)
+    if (next) reveal(flags[0].id)
+  }
+
   return (
-    <div
-      onClick={() => reveal(flags[0].id)}
-      title="Scroll the document to this paragraph"
-      className="cursor-pointer rounded-xl border border-leaf-100 bg-white p-3 shadow-sm transition hover:border-leaf-300 hover:shadow-md"
-    >
-      <div className="mb-2 flex items-center gap-2">
-        <span className={`h-2 w-2 rounded-full ${SEVERITY_DOT[topSeverity]}`} aria-hidden />
-        <span className="text-xs font-semibold text-bark-900">
+    <div className="overflow-hidden rounded-xl border border-leaf-100 bg-white shadow-sm transition hover:border-leaf-300 hover:shadow-md">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={expanded}
+        className="flex w-full items-center gap-2 px-3 py-2.5 text-left"
+      >
+        <span
+          className={`h-2 w-2 shrink-0 rounded-full ${SEVERITY_DOT[topSeverity]}`}
+          aria-hidden
+        />
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-bark-900">
           {flags.length} issues on this snippet
         </span>
-        {totalParts.length > 0 && (
-          <span className="ml-auto text-[11px] text-bark-700/60">{totalParts.join(' · ')}</span>
+        {!expanded && totalParts.length > 0 && (
+          <span className="shrink-0 text-[11px] text-bark-700/60">{totalParts.join(' · ')}</span>
         )}
-      </div>
+        <Chevron expanded={expanded} />
+      </button>
 
-      <div className="space-y-2">
-        {flags.map((flag) => (
-          <div key={flag.id} className="rounded-lg border border-leaf-100 bg-leaf-50/40 p-2.5">
-            <div className="mb-1.5 flex items-center gap-2">
-              <FlagChip flag={flag} />
-              {impactLabel(flag) && (
-                <span className="ml-auto text-[11px] text-bark-700/60">{impactLabel(flag)}</span>
-              )}
+      {expanded && (
+        <div className="space-y-2 border-t border-leaf-100 p-3">
+          {flags.map((flag) => (
+            <div key={flag.id} className="rounded-lg border border-leaf-100 bg-leaf-50/40 p-2.5">
+              <div className="mb-1.5 flex items-center gap-2">
+                <FlagChip flag={flag} />
+                {impactLabel(flag) && (
+                  <span className="ml-auto text-[11px] text-bark-700/60">{impactLabel(flag)}</span>
+                )}
+              </div>
+              <FlagIssueBody flag={flag} showTitle />
             </div>
-            <FlagIssueBody flag={flag} />
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

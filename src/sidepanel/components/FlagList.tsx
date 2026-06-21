@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useStore } from '../state/store'
 import { FlagCard, FlagGroupCard } from './FlagCard'
 import { EmptyState } from './EmptyState'
@@ -6,6 +7,10 @@ import { groupFlags } from './groupFlags'
 export function FlagList() {
   const flags = useStore((s) => s.flags)
   const loading = useStore((s) => s.loading)
+
+  // Only one card is open at a time (accordion); opening one collapses the rest.
+  // Keyed by the group's lead flag id, which is stable across re-renders.
+  const [openId, setOpenId] = useState<string | null>(null)
 
   if (loading && flags.length === 0) {
     return (
@@ -38,13 +43,16 @@ export function FlagList() {
 
   return (
     <div className="space-y-2 p-3">
-      {groups.map((group) =>
-        group.length === 1 ? (
-          <FlagCard key={group[0].id} flag={group[0]} />
+      {groups.map((group) => {
+        const id = group[0].id
+        const expanded = openId === id
+        const onToggle = (open: boolean) => setOpenId(open ? id : null)
+        return group.length === 1 ? (
+          <FlagCard key={id} flag={group[0]} expanded={expanded} onToggle={onToggle} />
         ) : (
-          <FlagGroupCard key={group[0].id} flags={group} />
-        ),
-      )}
+          <FlagGroupCard key={id} flags={group} expanded={expanded} onToggle={onToggle} />
+        )
+      })}
     </div>
   )
 }
