@@ -67,9 +67,6 @@ function FlagIssueBody({ flag, showTitle = false }: { flag: Flag; showTitle?: bo
   return (
     <>
       {showTitle && <h3 className="text-sm font-semibold text-bark-900">{flag.title}</h3>}
-      <p className={`text-xs leading-relaxed text-bark-700/80 ${showTitle ? 'mt-0.5' : ''}`}>
-        {flag.explanation}
-      </p>
 
       <div className="mt-2 space-y-1 rounded-lg bg-leaf-50 p-2 text-xs">
         <div className="flex gap-1.5">
@@ -163,9 +160,8 @@ export function FlagCard({
           className={`h-2 w-2 shrink-0 rounded-full ${SEVERITY_DOT[flag.severity]}`}
           aria-hidden
         />
-        <span className="min-w-0 flex-1 truncate text-sm">
-          <span className="font-semibold text-bark-900">{flag.title}</span>
-          {!expanded && <span className="text-bark-700/60"> – {flag.explanation}</span>}
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-bark-900">
+          {flag.title}
         </span>
         {!expanded && impact && (
           <span className="shrink-0 text-[11px] text-bark-700/60">{impact}</span>
