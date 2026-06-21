@@ -6,6 +6,7 @@ import { SAMPLE_DOC, flatten, type DocModel } from '../lib/docModel'
 import type { Flag } from '../lib/analyzer/types'
 import { analyze } from '../lib/analyzer/client'
 import { MockDocsBackend, GoogleDocsBackend, type EditBackend } from '../lib/docBackend'
+import { applyAllFixes } from '../lib/applyAll'
 import { getActiveGoogleDocId, fetchGoogleDoc, fetchDocPageCount } from '../lib/googleDocs'
 import { estimatePages, lineLocation } from '../lib/pageEstimate'
 import {
@@ -184,27 +185,16 @@ onMessage(async (msg: Msg, sender) => {
     }
 
     case 'APPLY_ALL': {
-      // Apply fixes one at a time, re-detecting between each so every edit runs against a
-      // fresh, consistent document (the live backend re-reads after each edit). Applying a
-      // fix resolves its flag, so the list shrinks; the guard bounds pathological cases.
-      let guard = 0
-      while (state.flags.length > 0 && guard < 200) {
-        guard++
-        const before = state.flags.length
-        const flag = state.flags[0]
-        try {
-          state.doc = await backend.apply(state.doc, flag.action)
-        } catch (err) {
-          console.warn('[GreenPages] apply-all: a fix failed, skipping it:', err)
-        }
-        await reanalyzeFlags() // no page export on each step — done once below
-        if (state.flags.length >= before) {
-          // The fix didn't clear its flag (e.g. apply failed). Skip it so the rest proceed;
-          // it keeps the same id while unresolved, so dismissing it sticks for this run.
-          state.dismissed.add(flag.id)
-          state.flags = state.flags.filter((f) => f.id !== flag.id)
-        }
-      }
+      // Robust loop lives in applyAllFixes (testable, signature-based, no `dismissed`
+      // pollution). It analyzes via the same backend path and applies via the live/mock
+      // backend, re-reading between edits. Respect prior user dismissals but never add to them.
+      const analyzeFn = (d: DocModel) =>
+        analyze(d, { useAI: state.settings.useAI, backendUrl: state.settings.backendUrl }).then(
+          (flags) => flags.filter((f) => !state.dismissed.has(f.id)),
+        )
+      const result = await applyAllFixes(state.doc, analyzeFn, (d, a) => backend.apply(d, a))
+      state.doc = result.doc
+      state.flags = result.flags
       await refreshPages()
       return stateMessage()
     }

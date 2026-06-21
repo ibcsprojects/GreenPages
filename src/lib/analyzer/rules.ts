@@ -32,7 +32,7 @@ function isBlank(p: Paragraph): boolean {
   // Images and tables sit in paragraphs with no text — they are NOT blank lines, and must
   // never be swept into a blank-run collapse (that would delete the image/table).
   if (p.images && p.images.length > 0) return false
-  if (p.kind === 'table') return false
+  if (p.kind === 'table' || p.isRule) return false
   return paragraphText(p).trim().length === 0 && p.kind !== 'pageBreak'
 }
 
@@ -109,7 +109,9 @@ function detectBlankRuns(doc: DocModel): Flag[] {
       let j = i
       while (j < doc.paragraphs.length && isBlank(doc.paragraphs[j])) j++
       const count = j - i
-      if (count >= 2) {
+      // A run that reaches the end of the document is handled by detectBlankPage (it may be
+      // spilling onto a wasted blank page), so don't also flag it here as plain spacing.
+      if (count >= 2 && j < doc.paragraphs.length) {
         const range: Range = {
           start: doc.paragraphs[i].start!,
           end: doc.paragraphs[j - 1].end!,
@@ -134,6 +136,67 @@ function detectBlankRuns(doc: DocModel): Flag[] {
     }
   }
   return flags
+}
+
+// ---------------------------------------------------------------------------
+// 3b. Trailing blank lines that spill onto a near-empty extra page. A few empty lines at the
+//     end can push the document onto a whole new sheet that's otherwise blank — very wasteful.
+// ---------------------------------------------------------------------------
+function detectBlankPage(doc: DocModel): Flag[] {
+  const paras = doc.paragraphs
+  if (paras.length === 0) return []
+  // The run of blank paragraphs at the very end of the document.
+  let start = paras.length
+  for (let k = paras.length - 1; k >= 0; k--) {
+    if (isBlank(paras[k])) start = k
+    else break
+  }
+  const trailing = paras.slice(start)
+  if (trailing.length === 0) return []
+
+  // Page math (heuristic): do the trailing blanks fall on their own page?
+  const lpp = doc.linesPerPage
+  const totalLines = estimatePages(doc).lines
+  const contentLines = Math.max(0, totalLines - trailing.length)
+  const totalPages = Math.max(1, Math.ceil(totalLines / lpp))
+  const contentPages = Math.max(1, Math.ceil(contentLines / lpp))
+  const createsExtraPage = totalPages > contentPages
+
+  // A single trailing blank is the document's natural last paragraph on most docs, so only
+  // flag it on a multi-page document and when it can actually be removed (the paragraph
+  // before it isn't a table — that lone blank is the required separator after a table).
+  const before = paras[start - 1]
+  if (trailing.length < 2) {
+    if (totalPages < 2 || !before || before.kind === 'table') return []
+  }
+
+  const single = trailing.length === 1
+  const range: Range = { start: trailing[0].start!, end: trailing[trailing.length - 1].end! }
+  return [
+    {
+      id: fid('blankPage'),
+      type: 'blankPage',
+      severity: createsExtraPage ? 'high' : 'low',
+      range,
+      title: createsExtraPage
+        ? single
+          ? 'A blank line adds an empty page'
+          : 'Blank lines add an empty page'
+        : `${trailing.length} trailing blank line${single ? '' : 's'}`,
+      explanation: createsExtraPage
+        ? 'Empty line(s) at the end of the document run onto a new, almost-blank page — a whole wasted sheet. Removing them pulls everything back onto the previous page.'
+        : 'Empty lines at the end of the document only pad it out and can spill onto an extra page.',
+      before: `${trailing.length} blank line${single ? '' : 's'} at the end`,
+      after: createsExtraPage ? 'Empty page removed' : single ? 'Removed' : '1 blank line',
+      impact: {
+        paper: createsExtraPage
+          ? totalPages - contentPages
+          : charsToPaper(Math.max(1, trailing.length - 1) * CHARS_PER_LINE, doc),
+        ink: 0,
+      },
+      action: { kind: 'removeBlankLines', range },
+    },
+  ]
 }
 
 // ---------------------------------------------------------------------------
@@ -423,6 +486,7 @@ export function analyzeDoc(doc: DocModel, opts: AnalyzeDocOptions = {}): Flag[] 
     ...detectHighlights(doc),
     ...detectFontSize(doc),
     ...detectBlankRuns(doc),
+    ...detectBlankPage(doc),
     ...detectPageBreaks(doc),
     ...detectBulletSprawl(doc),
     ...detectVerbose(doc, opts.aiRewrite ?? false),

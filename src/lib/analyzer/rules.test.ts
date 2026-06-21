@@ -326,6 +326,93 @@ describe('blank-run detection vs. images', () => {
   })
 })
 
+describe('blankPage detection (trailing blanks spilling to an empty page)', () => {
+  const trailingDoc = (content: number, blanks: number, linesPerPage: number): DocModel =>
+    rebuildOffsets({
+      id: 'd',
+      title: 't',
+      defaultFontSize: 11,
+      linesPerPage,
+      paragraphs: [
+        ...Array.from({ length: content }, (_, i) => ({
+          id: `c${i}`,
+          kind: 'normal' as const,
+          runs: [{ text: 'Line', fontSize: 11 }],
+        })),
+        ...Array.from({ length: blanks }, (_, i) => ({
+          id: `b${i}`,
+          kind: 'normal' as const,
+          runs: [{ text: '', fontSize: 11 }],
+        })),
+      ],
+    })
+
+  it('flags trailing blanks that push content onto a new page (high severity)', () => {
+    // 5 content lines fill page 1 (lpp 5); the 2 trailing blanks spill onto a blank page 2.
+    const f = analyzeDoc(trailingDoc(5, 2, 5)).find((x) => x.type === 'blankPage')
+    expect(f).toBeDefined()
+    expect(f!.severity).toBe('high')
+    expect(f!.action.kind).toBe('removeBlankLines')
+    expect(f!.impact.paper).toBeGreaterThanOrEqual(1)
+  })
+
+  it('hands trailing runs to blankPage, not doubleSpacing (no duplicate flag)', () => {
+    const flags = analyzeDoc(trailingDoc(5, 3, 5))
+    expect(flags.some((x) => x.type === 'doubleSpacing')).toBe(false)
+    expect(flags.some((x) => x.type === 'blankPage')).toBe(true)
+  })
+
+  it('does not flag a single trailing blank on a one-page document', () => {
+    // 6 lines, 46 per page → 1 page; a lone final blank here is the doc's natural last line.
+    expect(analyzeDoc(trailingDoc(5, 1, 46)).some((x) => x.type === 'blankPage')).toBe(false)
+  })
+
+  it('flags a single trailing blank on a multi-page document (the reported case)', () => {
+    // 5 content lines fill page 1 (lpp 5); the lone trailing blank spills onto a blank page 2.
+    const f = analyzeDoc(trailingDoc(5, 1, 5)).find((x) => x.type === 'blankPage')
+    expect(f).toBeDefined()
+    expect(f!.severity).toBe('high')
+    expect(f!.action.kind).toBe('removeBlankLines')
+  })
+
+  it('does not flag a lone trailing blank that sits right after a table', () => {
+    const d = rebuildOffsets({
+      id: 'd',
+      title: 't',
+      defaultFontSize: 11,
+      linesPerPage: 1, // force multi-page
+      paragraphs: [
+        { id: 'tb', kind: 'table', runs: [{ text: '', fontSize: 11 }] },
+        { id: 'b', kind: 'normal', runs: [{ text: '', fontSize: 11 }] }, // required post-table blank
+      ],
+    })
+    expect(analyzeDoc(d).some((x) => x.type === 'blankPage')).toBe(false)
+  })
+
+  it('still flags mid-document blank runs as doubleSpacing', () => {
+    const d = rebuildOffsets({
+      id: 'd',
+      title: 't',
+      defaultFontSize: 11,
+      linesPerPage: 46,
+      paragraphs: [
+        { id: 'a', kind: 'normal', runs: [{ text: 'A', fontSize: 11 }] },
+        { id: 'b1', kind: 'normal', runs: [{ text: '', fontSize: 11 }] },
+        { id: 'b2', kind: 'normal', runs: [{ text: '', fontSize: 11 }] },
+        { id: 'c', kind: 'normal', runs: [{ text: 'B', fontSize: 11 }] },
+      ],
+    })
+    expect(analyzeDoc(d).some((x) => x.type === 'doubleSpacing')).toBe(true)
+  })
+
+  it('collapses the trailing run on apply', async () => {
+    const d = trailingDoc(5, 3, 5)
+    const f = analyzeDoc(d).find((x) => x.type === 'blankPage')!
+    const next = await new MockDocsBackend().apply(d, f.action)
+    expect(analyzeDoc(next).some((x) => x.type === 'blankPage')).toBe(false)
+  })
+})
+
 describe('wideIndents detection', () => {
   const indentDoc = (
     paras: { text: string; kind?: 'normal' | 'bullet' | 'heading'; indentStartPt?: number; indentEndPt?: number }[],

@@ -4,6 +4,7 @@ export const FLAG_META: Record<FlagType, { label: string; icon: string; accent: 
   highlight: { label: 'Ink — highlight', icon: '🖍️', accent: 'bg-amber-100 text-amber-800' },
   fontSize: { label: 'Paper — font size', icon: '🔠', accent: 'bg-sky-100 text-sky-800' },
   doubleSpacing: { label: 'Paper — spacing', icon: '↕️', accent: 'bg-violet-100 text-violet-800' },
+  blankPage: { label: 'Paper — blank page', icon: '📄', accent: 'bg-rose-100 text-rose-800' },
   pageBreak: { label: 'Paper — page break', icon: '⤓', accent: 'bg-rose-100 text-rose-800' },
   bulletSprawl: { label: 'Paper — layout', icon: '☰', accent: 'bg-teal-100 text-teal-800' },
   verbose: { label: 'Paper — wordiness', icon: '✂️', accent: 'bg-leaf-100 text-leaf-800' },

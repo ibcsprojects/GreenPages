@@ -171,6 +171,7 @@ interface ApiElement {
   endIndex?: number
   textRun?: { content?: string; textStyle?: ApiTextStyle }
   pageBreak?: unknown
+  horizontalRule?: unknown
   inlineObjectElement?: { inlineObjectId?: string }
 }
 interface ApiDimension {
@@ -191,6 +192,7 @@ interface ApiParagraph {
     namedStyleType?: string
     indentStart?: ApiDimension
     indentEnd?: ApiDimension
+    borderBottom?: { width?: ApiDimension }
   }
   bullet?: unknown
 }
@@ -229,7 +231,7 @@ export interface ApiDoc {
   documentStyle?: ApiDocumentStyle
 }
 
-function mapApiDoc(docId: string, api: ApiDoc): DocModel {
+export function mapApiDoc(docId: string, api: ApiDoc): DocModel {
   const paragraphs: Paragraph[] = []
   let i = 0
   for (const el of api.body?.content ?? []) {
@@ -304,6 +306,11 @@ function mapParagraph(
 
   const indentStartPt = para.paragraphStyle?.indentStart?.magnitude
   const indentEndPt = para.paragraphStyle?.indentEnd?.magnitude
+  // A horizontal line is a separator, not a blank line. It shows up either as a real
+  // `horizontalRule` element (Insert → Horizontal line) or as our bottom-border rule.
+  const hasHorizontalRule = elements.some((e) => e.horizontalRule)
+  const hasBottomBorder = (para.paragraphStyle?.borderBottom?.width?.magnitude ?? 0) > 0
+  const isRule = hasHorizontalRule || (hasBottomBorder && text.trim() === '')
 
   return {
     id,
@@ -312,6 +319,7 @@ function mapParagraph(
     ...(images.length ? { images } : {}),
     ...(indentStartPt ? { indentStartPt } : {}),
     ...(indentEndPt ? { indentEndPt } : {}),
+    ...(isRule ? { isRule: true } : {}),
     docStart: el.startIndex,
     docEnd: el.endIndex,
   }

@@ -49,6 +49,9 @@ export interface Paragraph {
   /** Left/right paragraph indents in points (the ruler's blue markers). 0/undefined = none. */
   indentStartPt?: number
   indentEndPt?: number
+  /** True for an empty paragraph that carries a bottom border, i.e. the horizontal-line
+   *  separator the page-break fix creates. It must never count as a blank line. */
+  isRule?: boolean
   /** Google Docs structural extent [docStart, docEnd) including the trailing newline
    *  (read path). Used for paragraph-level edits like deleting blank lines. */
   docStart?: number

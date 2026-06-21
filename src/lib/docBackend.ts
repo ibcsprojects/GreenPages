@@ -51,11 +51,21 @@ export class MockDocsBackend implements EditBackend {
             within(action.range, p) &&
             p.kind !== 'pageBreak' &&
             p.kind !== 'table' &&
+            !p.isRule &&
             !p.images?.length,
         )
-        // keep the first blank, drop the rest
-        const drop = new Set(blanks.slice(1).map((p) => p.id))
-        next.paragraphs = next.paragraphs.filter((p) => !drop.has(p.id))
+        let dropIds: Set<string>
+        const last = blanks[blanks.length - 1]
+        const before = next.paragraphs[next.paragraphs.indexOf(blanks[0]) - 1]
+        const isTrailing = next.paragraphs.indexOf(last) === next.paragraphs.length - 1
+        if (blanks.length > 0 && isTrailing && before && before.kind !== 'table') {
+          // Trailing run after normal content: remove every blank (content becomes the last line).
+          dropIds = new Set(blanks.map((p) => p.id))
+        } else {
+          // Mid-document run, or trailing-after-table: keep the last blank, drop the rest.
+          dropIds = new Set(blanks.slice(0, -1).map((p) => p.id))
+        }
+        next.paragraphs = next.paragraphs.filter((p) => !dropIds.has(p.id))
         break
       }
 
@@ -69,6 +79,8 @@ export class MockDocsBackend implements EditBackend {
           // Clear indents so the line spans the full text column (margin to margin).
           p.indentStartPt = 0
           p.indentEndPt = 0
+          // It's a horizontal-line separator now, not a blank line to be collapsed away.
+          p.isRule = true
         }
         break
       }
@@ -333,22 +345,50 @@ export function buildRequests(doc: DocModel, action: EditAction): unknown[] {
     }
 
     case 'removeBlankLines': {
-      // Keep the first blank line, delete the structural extent of the rest (text + newline).
+      // Collapse the run to a single blank. Delete each removed blank as its OWN range (not
+      // one big span) so a deletion never reaches across a table or other structural element.
       const blanks = doc.paragraphs.filter(
         (p) =>
           within(action.range, p) &&
           p.kind !== 'pageBreak' &&
           p.kind !== 'table' &&
+          !p.isRule &&
           p.docStart != null &&
+          p.docEnd != null &&
           !p.images?.length,
       )
-      const drop = blanks.slice(1)
-      if (drop.length === 0) return []
-      const startIndex = drop[0].docStart!
-      const endIndex = drop[drop.length - 1].docEnd!
-      return endIndex > startIndex
-        ? [{ deleteContentRange: { range: { startIndex, endIndex } } }]
-        : []
+      if (blanks.length === 0) return []
+      const docMax = Math.max(0, ...doc.paragraphs.map((p) => p.docEnd ?? 0))
+      const last = blanks[blanks.length - 1]
+      const before = doc.paragraphs[doc.paragraphs.indexOf(blanks[0]) - 1]
+
+      // A run that ends at the document's final paragraph and is preceded by a normal
+      // paragraph: remove ALL the trailing blanks (even a single one) by deleting from that
+      // paragraph's newline up to — but not including — the final blank's newline. The final
+      // newline is preserved, and no table is spanned, so Docs accepts it.
+      if (
+        last.docEnd === docMax &&
+        before &&
+        before.kind !== 'table' &&
+        before.docEnd != null &&
+        before.docEnd >= 2
+      ) {
+        return [
+          { deleteContentRange: { range: { startIndex: before.docEnd - 1, endIndex: last.docStart! } } },
+        ]
+      }
+
+      // Otherwise (mid-document run, or a trailing run sitting right after a table): collapse to
+      // a single blank — keep the LAST one and delete the rest, each by its own range. Keeping
+      // the last means we never touch the final newline and a table keeps a following paragraph.
+      if (blanks.length <= 1) return []
+      return blanks
+        .slice(0, -1)
+        .filter((p) => p.docEnd! > p.docStart!)
+        .sort((a, b) => b.docStart! - a.docStart!)
+        .map((p) => ({
+          deleteContentRange: { range: { startIndex: p.docStart!, endIndex: p.docEnd! } },
+        }))
     }
 
     case 'pageBreakToRule': {

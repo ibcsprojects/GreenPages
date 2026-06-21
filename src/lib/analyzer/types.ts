@@ -6,6 +6,7 @@
 export type FlagType =
   | 'highlight' // wasteful background highlight → underline/italic
   | 'doubleSpacing' // blank lines / double line-spacing padding the page
+  | 'blankPage' // trailing blank lines spilling onto a near-empty extra page
   | 'fontSize' // oversized body font eating pages
   | 'pageBreak' // hard page break → a slim dashed rule
   | 'bulletSprawl' // many tiny bullets that a table would compress
