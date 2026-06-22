@@ -1,5 +1,6 @@
 import { useStore } from '../state/store'
 import { EcoScore } from './EcoScore'
+import { SortMenu } from './SortMenu'
 import logoUrl from '../../assets/logo.png'
 
 export function Header() {
@@ -19,13 +20,16 @@ export function Header() {
           <div className="text-sm font-bold text-leaf-800">GreenPages</div>
           <div className="text-[11px] text-bark-700/60">Print less. Save more.</div>
         </div>
-        <button
-          onClick={reanalyze}
-          disabled={loading}
-          className="ml-auto rounded-lg border border-leaf-200 bg-white px-2.5 py-1 text-xs font-medium text-leaf-700 transition hover:bg-leaf-100 disabled:opacity-50"
-        >
-          {loading ? 'Scanning…' : '↻ Re-scan'}
-        </button>
+        <div className="ml-auto flex items-center gap-1.5">
+          <SortMenu />
+          <button
+            onClick={reanalyze}
+            disabled={loading}
+            className="rounded-lg border border-leaf-200 bg-white px-2.5 py-1 text-xs font-medium text-leaf-700 transition hover:bg-leaf-100 disabled:opacity-50"
+          >
+            {loading ? 'Scanning…' : '↻ Re-scan'}
+          </button>
+        </div>
       </div>
       {showScore && <EcoScore />}
     </header>
