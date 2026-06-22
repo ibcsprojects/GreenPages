@@ -23,7 +23,7 @@ const IMAGE_AREA_LIMIT = 0.25
 let _fid = 0
 const fid = (t: string) => `flag-${t}-${_fid++}`
 
-function charsToPaper(chars: number, doc: DocModel): number {
+export function charsToPaper(chars: number, doc: DocModel): number {
   const charsPerPage = CHARS_PER_LINE * doc.linesPerPage
   return Math.max(0, chars / charsPerPage)
 }
