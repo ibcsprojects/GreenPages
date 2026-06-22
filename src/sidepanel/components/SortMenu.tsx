@@ -38,7 +38,7 @@ export function SortMenu() {
         aria-label="Sort issues"
         aria-haspopup="menu"
         aria-expanded={open}
-        className={`rounded-lg border p-1.5 transition ${
+        className={`flex items-center rounded-lg border px-2 py-1 transition ${
           open
             ? 'border-leaf-400 bg-leaf-100 text-leaf-700'
             : 'border-leaf-200 bg-white text-leaf-700 hover:bg-leaf-100'
