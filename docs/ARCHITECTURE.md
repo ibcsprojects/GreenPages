@@ -34,17 +34,13 @@
 - **`src/lib/`** — framework-free core, unit-tested:
   - `docModel.ts` — paragraphs → styled text runs (mirrors the Docs API shape) +
     `flatten` / `rebuildOffsets` / `cloneDoc` + the bundled `SAMPLE_DOC`.
-  - `analyzer/rules.ts` — the six detectors → `Flag[]`. `analyzer/condense.ts` — offline
-    text shortener. `analyzer/client.ts` — local-vs-Gemini switch.
+  - `analyzer/rules.ts` — the detectors → `Flag[]`. `analyzer/condense.ts` — offline
+    wordy-phrase shortener, with the phrase table in `analyzer/condensePhrases.ts`
+    (sourced from LanguageTool's English style rules).
   - `docBackend.ts` — `EditBackend` interface; `MockDocsBackend` (in-memory, today) and
     `GoogleDocsBackend` (maps each `EditAction` to a Docs API `batchUpdate` request).
   - `pageEstimate.ts` — printed-page estimate (font size + blank lines inflate it).
   - `messaging.ts` — the typed message protocol.
-
-- **`api/`** — optional Vercel serverless functions (root convention). `api/analyze.ts`
-  (structural rules + Gemini-upgraded verbose suggestions) and `api/condense.ts`, with
-  shared helpers in **`server/lib/`** (`gemini.ts`, `prompt.ts`). Both fall back to the
-  offline path when `GEMINI_API_KEY` is absent.
 
 ## Data flow for "Apply"
 
@@ -66,11 +62,9 @@ ready for them if Google ever exposes the geometry.
 
 ## The upgrade seam
 
-Going live = three independent swaps, none of which touch the UI:
+Going live = two independent swaps, neither of which touches the UI:
 
 1. **Read** the real doc → replace `SAMPLE_DOC` with a Docs API `documents.get` mapped to
    `DocModel` (the shapes already align: paragraphs → text runs → `textStyle`).
 2. **Write** edits → swap `MockDocsBackend` for `GoogleDocsBackend` (request payloads are
    already written in `buildRequests`; only OAuth + index translation remain).
-3. **AI** → on by default; build with `VITE_BACKEND_URL` set (baked into `DEFAULT_SETTINGS`)
-   and `analyzer/client.ts` routes to the Gemini-backed endpoints.

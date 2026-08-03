@@ -6,19 +6,10 @@ import type { Flag } from './analyzer/types'
 
 export type Settings = {
   duplexReminder: boolean
-  /**
-   * Use the Gemini backend to read paragraphs and rewrite wordy ones.
-   * On by default — the backend URL is baked in at build time (VITE_BACKEND_URL),
-   * so AI just works without the user touching settings.
-   */
-  useAI: boolean
-  backendUrl: string
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   duplexReminder: true,
-  useAI: true,
-  backendUrl: import.meta.env.VITE_BACKEND_URL ?? '',
 }
 
 export type Msg =
