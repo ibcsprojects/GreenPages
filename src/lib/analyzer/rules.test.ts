@@ -523,12 +523,6 @@ describe('condenseLocally', () => {
   it('flags only genuinely verbose text', () => {
     expect(looksVerbose('Short and tidy.')).toBe(false)
   })
-
-  it('applies phrases imported from the LanguageTool list', () => {
-    // "in the course of" -> "during" comes only from condensePhrases.ts, so this guards
-    // the parse/regex-build of the imported list (not the hand-written CUSTOM phrases).
-    expect(condenseLocally('We spoke in the course of the meeting.')).toContain('during')
-  })
 })
 
 describe('rebuildOffsets', () => {

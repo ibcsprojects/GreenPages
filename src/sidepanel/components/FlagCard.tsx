@@ -60,7 +60,7 @@ function FlagIssueBody({ flag, showTitle = false }: { flag: Flag; showTitle?: bo
   const reveal = useStore((s) => s.reveal)
   const busy = useStore((s) => s.busy[flag.id])
 
-  // Verbose flags expose an editable condensed suggestion before applying.
+  // Verbose flags expose an editable AI suggestion before applying.
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(flag.editableSuggestion ?? '')
 

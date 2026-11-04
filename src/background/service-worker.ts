@@ -4,7 +4,7 @@
 
 import { SAMPLE_DOC, flatten, type DocModel } from '../lib/docModel'
 import type { Flag } from '../lib/analyzer/types'
-import { analyzeDoc } from '../lib/analyzer/rules'
+import { analyze } from '../lib/analyzer/client'
 import { MockDocsBackend, GoogleDocsBackend, type EditBackend } from '../lib/docBackend'
 import { applyAllFixes } from '../lib/applyAll'
 import { getActiveGoogleDocId, fetchGoogleDoc, fetchDocPageCount } from '../lib/googleDocs'
@@ -50,6 +50,11 @@ async function loadSettings() {
   const saved = await chrome.storage.local.get('settings')
   if (saved.settings) {
     state.settings = { ...DEFAULT_SETTINGS, ...saved.settings }
+    // AI on/off and the backend URL are build-time concerns (baked from VITE_BACKEND_URL),
+    // not user toggles. Always take them from the current defaults so stale stored settings
+    // (e.g. an old useAI:false or empty backendUrl) can't silently disable AI after an update.
+    state.settings.useAI = DEFAULT_SETTINGS.useAI
+    state.settings.backendUrl = DEFAULT_SETTINGS.backendUrl
   }
 }
 
@@ -91,7 +96,10 @@ async function reanalyze() {
 // Re-detect flags only (no page export). Apply-all calls this between edits so it doesn't
 // pay for a PDF page count on every step — it refreshes pages once when the run finishes.
 async function reanalyzeFlags() {
-  const flags = analyzeDoc(state.doc)
+  const flags = await analyze(state.doc, {
+    useAI: state.settings.useAI,
+    backendUrl: state.settings.backendUrl,
+  })
   state.flags = flags.filter((f) => !state.dismissed.has(f.id))
 }
 
@@ -181,7 +189,9 @@ onMessage(async (msg: Msg, sender) => {
       // pollution). It analyzes via the same backend path and applies via the live/mock
       // backend, re-reading between edits. Respect prior user dismissals but never add to them.
       const analyzeFn = (d: DocModel) =>
-        analyzeDoc(d).filter((f) => !state.dismissed.has(f.id))
+        analyze(d, { useAI: state.settings.useAI, backendUrl: state.settings.backendUrl }).then(
+          (flags) => flags.filter((f) => !state.dismissed.has(f.id)),
+        )
       const result = await applyAllFixes(state.doc, analyzeFn, (d, a) => backend.apply(d, a))
       state.doc = result.doc
       state.flags = result.flags

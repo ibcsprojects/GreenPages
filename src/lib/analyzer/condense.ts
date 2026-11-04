@@ -1,12 +1,8 @@
-// Deterministic, offline text shortener used by the `verbose` detector to propose an edit.
-// It only collapses well-known wordy phrases, so it is safe and predictable. The bulk of the
-// list comes from LanguageTool's English style rules (see condensePhrases.ts); CUSTOM below
-// holds a few hand-picked phrases (compound/doubled forms, better replacements) that take
-// priority over the imported list.
+// Deterministic, offline text shortener. Used by the `verbose` detector to propose an
+// edit, and mirrored on the backend as the fallback when no Gemini key is configured.
+// It only collapses well-known wordy phrases, so it is safe and predictable.
 
-import { WORDY_PHRASES } from './condensePhrases.js'
-
-const CUSTOM: Array<[RegExp, string]> = [
+const PHRASES: Array<[RegExp, string]> = [
   [/\bdue to the fact that\b/gi, 'because'],
   [/\bin light of the fact that\b/gi, 'because'],
   [/\bin the event that\b/gi, 'if'],
@@ -32,20 +28,6 @@ const CUSTOM: Array<[RegExp, string]> = [
   [/\bit is important to note that\b/gi, ''],
   [/\bit should be noted that\b/gi, ''],
 ]
-
-const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-
-// Parse the LanguageTool-sourced `phrase=replacement` lines into word-bounded regexes once.
-// ponytail: ~620 regexes run per verbose paragraph — fine for short paragraphs; if this ever
-// shows up in a profile, swap to a single alternation regex with a lookup on the match.
-const IMPORTED: Array<[RegExp, string]> = WORDY_PHRASES.trim()
-  .split('\n')
-  .map((line): [RegExp, string] => {
-    const i = line.indexOf('=')
-    return [new RegExp(`\\b${escapeRe(line.slice(0, i))}\\b`, 'gi'), line.slice(i + 1)]
-  })
-
-const PHRASES: Array<[RegExp, string]> = [...CUSTOM, ...IMPORTED]
 
 /** Collapse wordy phrases and tidy whitespace/leading capital. */
 export function condenseLocally(input: string): string {

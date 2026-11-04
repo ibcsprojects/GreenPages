@@ -6,8 +6,8 @@ you accept **one at a time** from a side panel — plus a print-intercept that d
 you before any wasteful print job.
 
 > Works **100% offline out of the box** against a bundled demo document and a
-> deterministic rules engine. No accounts, no keys. Connecting the Google Docs API to read
-> and edit your live document is an optional upgrade (see [`docs/SETUP.md`](docs/SETUP.md)).
+> deterministic rules engine. No accounts, no keys. The Google Docs API and Gemini are an
+> optional upgrade (see [`docs/SETUP.md`](docs/SETUP.md)).
 
 ## What it flags
 
@@ -18,7 +18,7 @@ you before any wasteful print job.
 | ↕️ Stacked blank lines | Padding pages | Collapse to one |
 | ⤓ Hard page break | Half-blank sheet | Slim dashed divider |
 | ☰ Sprawling short bullets | One line each | Compact table |
-| ✂️ Wordy paragraphs | Extra lines | Condensed text (editable) |
+| ✂️ Wordy paragraphs | Extra lines | AI-condensed text (editable) |
 
 ## Quick start
 
