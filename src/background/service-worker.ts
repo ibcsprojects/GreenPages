@@ -28,6 +28,8 @@ interface Session {
   dismissed: Set<string>
   pages: number
   pagesExact: boolean
+  /** Fingerprint of the doc the page count was taken from. */
+  pagesSig: string
   loaded: boolean
   needsAccess: boolean
   notice: string | null
@@ -64,6 +66,7 @@ function sessionFor(sender: chrome.runtime.MessageSender): Session {
       dismissed: new Set(),
       pages: 1,
       pagesExact: false,
+      pagesSig: '',
       loaded: false,
       needsAccess: false,
       notice: null,
@@ -119,6 +122,14 @@ function explainLoadError(raw: string): string {
   return `Couldn't open this document: ${raw}`
 }
 
+/** Cheap fingerprint (djb2 over the serialised model) to tell whether a doc changed. */
+function docSignature(doc: DocModel): string {
+  const text = JSON.stringify(doc)
+  let h = 5381
+  for (let i = 0; i < text.length; i++) h = ((h << 5) + h + text.charCodeAt(i)) | 0
+  return `${text.length}:${h}`
+}
+
 function analyzeFlags(s: Session, doc: DocModel): Flag[] {
   return analyzeDoc(doc).filter((f) => !s.dismissed.has(f.id))
 }
@@ -133,6 +144,10 @@ async function reanalyze(s: Session) {
 // otherwise our layout estimate, which the UI labels "estimate".
 async function refreshPages(s: Session) {
   if (!s.doc) return
+  // The PDF export is the heavy call; skip it when nothing in the doc has changed.
+  const sig = docSignature(s.doc)
+  if (s.pagesExact && sig === s.pagesSig) return
+  s.pagesSig = sig
   if (s.docId) {
     try {
       s.pages = await fetchExportPageCount(s.docId)
@@ -200,7 +215,8 @@ onMessage(async (msg: Msg, sender) => {
       await loadSettings()
       // Re-read the live doc so edits made in Docs since the last scan are picked up.
       if (s.docId) s.loaded = false
-      s.dismissed.clear()
+      // The background rescan keeps the user's dismissals; "Scan again" starts fresh.
+      if (!msg.keepDismissed) s.dismissed.clear()
       if (s.loaded) await reanalyze(s)
       else await ensureReady(s)
       return stateMessage(s)

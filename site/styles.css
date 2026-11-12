@@ -301,7 +301,154 @@ label:focus-within {
   font-weight: 620;
 }
 
+.prose ol {
+  padding-left: 22px;
+}
+.prose li {
+  margin: 0 0 10px;
+}
+.prose li b {
+  color: var(--ink);
+}
+.prose code {
+  font: 0.92em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: var(--accent-wash);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 1px 6px;
+  color: var(--ink);
+}
+.callout {
+  margin: 8px 0 0;
+  padding: 16px 20px;
+  border: 1px solid #bfe3cc;
+  border-radius: var(--r-lg);
+  background: var(--accent-wash);
+  color: var(--ink-soft);
+}
+.callout b {
+  color: var(--ink);
+}
+
+/* ---- home: how it works ---- */
+.steps {
+  list-style: none;
+  margin: 28px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 32px;
+}
+.steps li {
+  border-top: 2px solid var(--accent);
+  padding-top: 14px;
+}
+.steps h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+.steps p {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+/* ---- home: calculator ---- */
+.section .note {
+  margin-top: 14px;
+  font-size: 14px;
+  color: var(--ink-faint);
+}
+.calc {
+  display: grid;
+  gap: 14px;
+  padding: 22px 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+.calc label {
+  display: grid;
+  gap: 4px;
+  font-size: 15px;
+  color: var(--ink-soft);
+}
+.calc input[type='number'] {
+  width: 100%;
+  font: inherit;
+  padding: 9px 12px;
+  border: 1px solid #c9d6c3;
+  border-radius: var(--r-sm);
+  background: #fff;
+  color: var(--ink);
+}
+.calc .check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.calc .check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+.calc-out {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 6px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.calc-out b {
+  display: block;
+  font-size: 28px;
+  line-height: 1.1;
+  color: var(--accent-strong);
+  font-variant-numeric: tabular-nums;
+}
+.calc-out span {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+/* ---- home: questions and closing call to action ---- */
+.faq {
+  margin-top: 24px;
+  max-width: 72ch;
+  border-top: 1px solid var(--line);
+}
+.faq details {
+  border-bottom: 1px solid var(--line);
+  padding: 14px 0;
+}
+.faq summary {
+  cursor: pointer;
+  font-weight: 620;
+}
+.faq p {
+  margin: 10px 0 0;
+  color: var(--ink-soft);
+}
+.cta {
+  padding: 40px 36px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--accent-wash);
+}
+.cta h2 {
+  margin-bottom: 18px;
+}
+.cta .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 @media (max-width: 860px) {
+  .steps {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
   .hero {
     grid-template-columns: 1fr;
     min-height: 0;

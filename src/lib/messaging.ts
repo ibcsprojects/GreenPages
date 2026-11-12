@@ -42,7 +42,7 @@ export type Msg =
     }
   /** A handler threw: surfaced to the overlay instead of vanishing into a dead port. */
   | { type: 'ERROR'; message: string }
-  | { type: 'REANALYZE' }
+  | { type: 'REANALYZE'; keepDismissed?: boolean }
   | { type: 'APPLY_FLAG'; flagId: string; overrideText?: string }
   | { type: 'APPLY_ALL' }
   | { type: 'DISMISS_FLAG'; flagId: string }
