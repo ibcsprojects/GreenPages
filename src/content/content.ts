@@ -12,6 +12,7 @@ import { docIdFromUrl } from '../lib/googleDocs'
 import { mountOverlay, type OverlayController } from '../overlay/mount'
 import { setRevealHandler } from '../overlay/store'
 import { installPrintIntercept } from './printIntercept'
+import { installAutoRescan } from './autoRescan'
 
 // Only on an open document. The manifest already restricts this, but Docs can change URLs
 // in place, so wait for a document URL instead of mounting on a list or home page.
@@ -24,6 +25,7 @@ function start() {
     () => document.querySelector('.kix-appview-editor')?.getBoundingClientRect() ?? null,
   )
   installPrintIntercept({ onReview: () => overlay?.open() })
+  installAutoRescan()
 }
 start()
 if (!overlay) {

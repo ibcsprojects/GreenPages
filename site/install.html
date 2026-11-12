@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Install GreenPages</title>
+    <meta
+      name="description"
+      content="How to install GreenPages in Chrome, connect it to Google Docs, and fix the most common sign-in problems."
+    />
+    <link rel="icon" href="assets/icon.png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap">
+        <a class="brand" href="./"><img src="assets/icon.png" alt="" />GreenPages</a>
+        <nav aria-label="Site">
+          <a href="install.html" aria-current="page">Install</a>
+          <a href="guide.html">Guide</a>
+          <a href="pdf-check/">PDF check</a>
+          <a href="privacy.html">Privacy</a>
+          <a href="https://github.com/ibcsprojects/GreenPages">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <article class="prose">
+        <h1>Install GreenPages</h1>
+        <p class="meta">For Google Docs in Chrome on a computer.</p>
+
+        <div class="callout">
+          <b>Where things stand.</b> GreenPages is not in the Chrome Web Store yet, and Google is
+          still reviewing its sign-in. Until that finishes, only approved testers can connect it
+          to Google Docs. To be added,
+          <a href="https://github.com/ibcsprojects/GreenPages/issues">open an issue</a> with the
+          email address of the Google account you use for Docs.
+        </div>
+
+        <h2>Install it</h2>
+        <ol>
+          <li>Install <a href="https://nodejs.org">Node.js</a> if you do not have it.</li>
+          <li>
+            Download the code from
+            <a href="https://github.com/ibcsprojects/GreenPages">GitHub</a> (Code, then Download
+            ZIP) and unzip it.
+          </li>
+          <li>
+            In that folder, run <code>npm install</code> and then <code>npm run build</code>. This
+            creates a folder called <code>dist</code>.
+          </li>
+          <li>
+            In Chrome, open <code>chrome://extensions</code> and turn on <b>Developer mode</b>.
+          </li>
+          <li>Click <b>Load unpacked</b> and choose the <code>dist</code> folder.</li>
+        </ol>
+
+        <h2>Connect it to Google Docs</h2>
+        <ol>
+          <li>Open any Google Doc. A round green button appears in the corner of the editor.</li>
+          <li>Click it, then <b>Connect to Google Docs</b>.</li>
+          <li>
+            Google may say it has not verified the app. If your account is on the tester list,
+            choose <b>Continue</b>, then allow access to your Docs.
+          </li>
+          <li>The list of issues appears. Click <b>Show</b> on one to jump to it.</li>
+        </ol>
+        <p>
+          Click the toolbar icon on any page that is not a Google Doc to open a demo document. It
+          needs no sign-in.
+        </p>
+
+        <h2>If something goes wrong</h2>
+        <p>The panel shows a red message when sign-in fails. The common ones:</p>
+        <table>
+          <thead>
+            <tr><th>Message</th><th>What to do</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>&ldquo;Google sign-in isn't set up for this copy of GreenPages&rdquo;</td>
+              <td>
+                Your copy has a different extension ID from the one Google expects. The message
+                shows your ID; send it in an issue.
+              </td>
+            </tr>
+            <tr>
+              <td>&ldquo;Sign-in didn't finish&rdquo;</td>
+              <td>
+                Your account is probably not on the tester list yet, or the Google window was
+                closed. Ask to be added, then click Connect again.
+              </td>
+            </tr>
+            <tr>
+              <td>&ldquo;Google refused access to this document (403)&rdquo;</td>
+              <td>
+                Check that you can open the document and that you are using the account that was
+                approved.
+              </td>
+            </tr>
+            <tr>
+              <td>The button never appears</td>
+              <td>
+                Reload the Google Docs tab after installing or updating the extension. The button
+                only appears on an open document, not on the Docs home page.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2>Remove it</h2>
+        <p>
+          To stop it reading your documents, remove access in your
+          <a href="https://myaccount.google.com/permissions">Google account permissions</a>. To
+          stop it running at all, remove it from <code>chrome://extensions</code>.
+        </p>
+      </article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap">
+        <span>GreenPages, MIT licence</span>
+        <a href="install.html">Install</a>
+        <a href="guide.html">Guide</a>
+        <a href="privacy.html">Privacy policy</a>
+        <a href="https://github.com/ibcsprojects/GreenPages">Source on GitHub</a>
+        <a href="https://github.com/ibcsprojects/GreenPages/issues">Contact and support</a>
+      </div>
+    </footer>
+  </body>
+</html>

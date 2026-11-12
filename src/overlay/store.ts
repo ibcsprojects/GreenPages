@@ -38,6 +38,8 @@ interface OverlayState {
   /** User clicked Connect: allows Google's one-time sign-in window. */
   connect: () => Promise<void>
   reanalyze: () => Promise<void>
+  /** Re-read the doc in the background (no spinner, keeps dismissals, ignores failures). */
+  refresh: () => Promise<void>
   apply: (flagId: string, overrideText?: string) => Promise<void>
   /** Apply every outstanding flag in one go. */
   applyAll: () => Promise<void>
@@ -124,6 +126,15 @@ export const useStore = create<OverlayState>((set, get) => ({
       handleResponse(set, await sendMessage<Msg>({ type: 'REANALYZE' }))
     } catch (err) {
       set({ error: errMessage(err), loading: false })
+    }
+  },
+
+  refresh: async () => {
+    try {
+      const msg = await sendMessage<Msg>({ type: 'REANALYZE', keepDismissed: true })
+      if (msg?.type === 'STATE') applyState(set, msg)
+    } catch {
+      // A background check that fails just leaves the last result in place.
     }
   },
 

@@ -48,8 +48,10 @@ export default defineManifest({
   ],
   // storage: settings. identity: Google sign-in for the Docs API.
   permissions: ['storage', 'identity'],
-  // The overlay runs on Docs pages; the page count reads Docs' own PDF export.
-  host_permissions: ['https://docs.google.com/*'],
+  // The overlay runs on Docs pages. The page count reads Docs' own PDF export, which Docs
+  // redirects to a doc-*-docstext.googleusercontent.com host; without access to that host
+  // the browser blocks the download and we can only estimate.
+  host_permissions: ['https://docs.google.com/*', 'https://*.googleusercontent.com/*'],
   // The overlay (content script) shows the logo, so the page must be allowed to load it.
   web_accessible_resources: [
     {

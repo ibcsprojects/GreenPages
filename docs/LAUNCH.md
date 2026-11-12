@@ -82,6 +82,7 @@ printed.
 | `identity` | Signs the user in with Google so the extension can read the open document through the Google Docs API and apply the formatting fixes the user accepts. |
 | `storage` | Saves the user's GreenPages settings on their device. |
 | Host `https://docs.google.com/*` | Shows the GreenPages panel inside Google Docs, intercepts Ctrl/Cmd+P to show the print check, and reads Docs' own PDF export of the open document to count its printed pages. |
+| Host `https://*.googleusercontent.com/*` | Google Docs redirects its own PDF export to a `doc-*-docstext.googleusercontent.com` address. The extension needs access to that host to download the export and count its pages. It is used for nothing else. |
 | OAuth scope `documents` | Reads the content and formatting of the document the user is working in, and edits it when the user clicks Apply. |
 
 **Remote code:** No. All code ships in the package.
