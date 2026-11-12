@@ -2,6 +2,7 @@
 // All text from the document is written with textContent, never as HTML.
 
 import { DocxError, DocxSession } from './docxFix'
+import { renderFlagCards } from './flagCards'
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
 
@@ -19,7 +20,6 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: 
   return e
 }
 
-const clip = (s: string, n = 140) => (s.length > n ? `${s.slice(0, n - 1)}…` : s)
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 
 function setStatus(text: string, error = false) {
@@ -97,26 +97,7 @@ function render() {
     return
   }
 
-  const list = el('ul', 'fx-list')
-  for (const f of flags) {
-    const li = el('li', 'fx-flag')
-    li.append(el('h3', undefined, f.title))
-    li.append(el('p', 'fx-why', f.explanation))
-    if (f.before || f.after) {
-      const diff = el('p', 'fx-diff')
-      if (f.before) diff.append(el('span', 'fx-before', clip(f.before)))
-      if (f.after) diff.append(el('span', 'fx-after', clip(f.after)))
-      li.append(diff)
-    }
-    const foot = el('div', 'fx-foot')
-    if (f.impact.paper >= 0.05) foot.append(el('span', 'fx-saves', `Saves about ${f.impact.paper.toFixed(1)} of a page`))
-    const apply = el('button', 'btn btn-quiet', 'Apply')
-    apply.type = 'button'
-    apply.addEventListener('click', () => run(() => s.apply(f.id)))
-    foot.append(apply)
-    li.append(foot)
-    list.append(li)
-  }
+  const list = renderFlagCards(flags, { onApply: (f) => run(() => s.apply(f.id)) })
   results.append(list)
 }
 

@@ -28,6 +28,7 @@ unfixed before the print dialog opens.
 ## Also on the website
 
 - **Word file tool** (`site/docx-fix/`): choose a .docx, review the issues, download a fixed copy. It uses the same checks as the extension on Word's document XML (`src/lib/ooxml/`) and runs entirely in the browser. Build it with `npm run site:build`.
+- **Word add-in** (`site/addin/`, notes in `docs/ADDIN.md`): a task pane inside Word with the same checks. Try it with `npm run addin:dev`.
 - **PDF check** (`site/pdf-check/`): finds blank and ink-heavy pages in any PDF.
 
 ## Install
@@ -70,6 +71,10 @@ CI runs the typecheck, tests and build on every pull request. How the pieces fit
 ## Licence
 
 [MIT](LICENSE)
+
+## Credits
+
+Created by Manav Purswani and Cata Gamero.
 
 ## Disclaimer
 

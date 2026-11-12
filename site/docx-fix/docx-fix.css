@@ -66,9 +66,18 @@
   font-size: 14px;
   color: var(--ink-faint);
 }
-.fx-foot .btn {
+.fx-buttons {
   margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+.fx-foot .btn {
   padding: 8px 16px;
+}
+.fx-unsupported {
+  margin: 10px 0 0;
+  font-size: 14px;
+  color: var(--warn);
 }
 .fx-help {
   margin-top: 48px;
