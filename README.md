@@ -65,3 +65,7 @@ CI runs the typecheck, tests and build on every pull request. How the pieces fit
 ## Licence
 
 [MIT](LICENSE)
+
+## Disclaimer
+
+GreenPages is an independent open-source project. It is not affiliated with, endorsed by or sponsored by Google. Google, Google Docs and Chrome are trademarks of Google LLC. The software is provided "as is" under the MIT licence, without warranty. It edits your document only when you click Apply, and Google Docs keeps version history so you can restore an earlier copy.

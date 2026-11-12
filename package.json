@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "site:vendor": "node scripts/vendor-pdfjs.mjs"
+    "site:vendor": "node scripts/vendor-pdfjs.mjs",
+    "notices": "node scripts/notices.mjs"
   },
   "dependencies": {
     "framer-motion": "^14.10.0",

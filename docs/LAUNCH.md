@@ -33,6 +33,26 @@ Store and Google's OAuth verification forms.
   it sits inside the editor and clear of Docs' right-hand toolbar.
 - **Estimate accuracy.** Compare "About N pages" with File > Print on a few real documents.
 
+## Legal and policy checklist
+
+Not legal advice. A lawyer, a school or a parent should confirm the items marked **Decide**.
+
+| Item | Status |
+|------|--------|
+| **Decide: the name.** GreenPages, Inc. (Kittery, Maine; also trading as GreenPages Technology Solutions and Blue Mantis) holds a registered GREENPAGES trademark and many related marks covering IT, cloud and software services. A software product with the same name risks a takedown request or a demand letter, and the Chrome Web Store removes listings on trademark complaints. Rename before launch, or search the USPTO (tmsearch.uspto.gov) and get advice. | **Open** |
+| **Decide: who owns the accounts.** Chrome Web Store, Google Cloud and GitHub need an adult who can accept their terms. If any contributor is under 18, a parent, guardian or teacher should own them. Also check the school or competition rules on who owns the work and whether it may be published. | **Open** |
+| **Decide: the icon.** Confirm everyone who drew or sourced `public/icons/*` agrees it can be released under the MIT licence, and that it is not taken from somewhere else. | **Open** |
+| Non-affiliation notice and Google trademark attribution | Done: site footers, README, store description. |
+| Privacy policy: what is accessed, where it goes, Limited Use statement, who runs it, children, contact | Done. Add a support email if Google's form asks for one. |
+| Scope is `documents` only (sensitive, not restricted, so no paid security assessment) | Done. |
+| Homepage and privacy policy on a domain you can verify in Search Console. `github.io` is a shared domain and may be rejected, so a bought domain is safest. | **Open** |
+| Host permission `*.googleusercontent.com` justified in the store form | Done in this file. Expect a closer review because of it. |
+| Open-source licence notices | Done: `public/THIRD_PARTY_NOTICES.txt` ships in the extension (`npm run notices` regenerates it); the pdf.js licence is copied beside the vendored files. |
+| No secrets in the repo or history | Checked: no API keys or private keys found in any commit. The Gemini key itself still needs deleting in Google AI Studio. |
+| No personal data in the repo | Checked: no emails or document IDs in tracked files. |
+| Environmental claims | The site makes none beyond page counts and plain arithmetic. Do not add claims such as "saves trees" without evidence. |
+| Page count uses Docs' own PDF export, an undocumented Google URL | Low risk, and it falls back to an estimate if Google blocks it. Mention it in the store notes. |
+
 ## Order to do the manual steps
 
 1. Enable GitHub Pages (Actions source). The site deploys on the next push to `main`.
@@ -65,6 +85,8 @@ Spots print waste in Google Docs (highlights, big fonts, blank pages, wordy text
 > a time or all at once.
 >
 > Before you print, Ctrl+P or Cmd+P shows the page count and anything you haven't fixed.
+>
+> GreenPages is an independent project, not affiliated with or endorsed by Google.
 >
 > Private by design: GreenPages has no server and uses no AI services. It reads the
 > document you have open through Google's Docs API, checks it in your browser, and writes
