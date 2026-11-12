@@ -56,6 +56,9 @@ const PPR_ORDER = ['pStyle', 'keepNext', 'keepLines', 'pageBreakBefore', 'frameP
 // Content we never edit or count as blank.
 const OPAQUE = new Set(['pict', 'object', 'footnoteReference', 'endnoteReference', 'fldChar', 'fldSimple', 'sym', 'commentReference', 'sdt', 'AlternateContent', 'anchor', 'txbxContent'])
 
+/** What a model paragraph is in the body: a real w:p, a table, or some other wrapper. */
+export type TopKind = 'p' | 'tbl' | 'other'
+
 // ---- small DOM helpers ----
 const isW = (el: Element, name: string) => el.namespaceURI === W && el.localName === name
 
@@ -166,6 +169,7 @@ export class OoxmlDoc {
   private defaultFont: number
   private paraEls: (Element | null)[] = []
   private runEls: Element[][] = []
+  private topKinds: TopKind[] = []
   private current!: DocModel
 
   constructor(xml: string, impl: XmlImpl, opts: OoxmlOptions = {}) {
@@ -178,6 +182,12 @@ export class OoxmlDoc {
 
   get model(): DocModel {
     return this.current
+  }
+
+  /** One entry per model paragraph: is it a plain w:p, a table, or another wrapper? The Word
+   *  add-in uses this to line the model up with Word's own paragraph list. */
+  topLevel(): TopKind[] {
+    return [...this.topKinds]
   }
 
   serialize(): string {
@@ -199,12 +209,14 @@ export class OoxmlDoc {
     const body = this.body()
     this.paraEls = []
     this.runEls = []
+    this.topKinds = []
     const paragraphs: Paragraph[] = []
     let i = 0
-    const push = (p: Paragraph, el: Element | null, runs: Element[] = []) => {
+    const push = (p: Paragraph, el: Element | null, runs: Element[] = [], kind: TopKind = 'p') => {
       paragraphs.push(p)
       this.paraEls.push(el)
       this.runEls.push(runs)
+      this.topKinds.push(kind)
     }
     for (const el of childEls(body)) {
       if (isW(el, 'sectPr')) continue
@@ -230,10 +242,12 @@ export class OoxmlDoc {
               ),
           },
           el,
+          [],
+          'tbl',
         )
-      } else push(this.opaque(`t${i++}`), el)
+      } else push(this.opaque(`t${i++}`), el, [], 'other')
     }
-    if (paragraphs.length === 0) push({ id: 'p0', kind: 'normal', runs: [{ text: '', fontSize: this.defaultFont }] }, null)
+    if (paragraphs.length === 0) push({ id: 'p0', kind: 'normal', runs: [{ text: '', fontSize: this.defaultFont }] }, null, [], 'other')
 
     const sect = [...childEls(body)].reverse().find((e) => isW(e, 'sectPr')) ?? null
     const pgSz = child(sect, 'pgSz')
@@ -247,12 +261,16 @@ export class OoxmlDoc {
       paragraphs,
       pageWidthPt: tw(pgSz, 'w', 12240),
       pageHeightPt: tw(pgSz, 'h', 15840),
-      margins: {
-        topPt: tw(pgMar, 'top', 1440),
-        bottomPt: tw(pgMar, 'bottom', 1440),
-        leftPt: tw(pgMar, 'left', 1440),
-        rightPt: tw(pgMar, 'right', 1440),
-      },
+      ...(pgMar
+        ? {
+            margins: {
+              topPt: tw(pgMar, 'top', 1440),
+              bottomPt: tw(pgMar, 'bottom', 1440),
+              leftPt: tw(pgMar, 'left', 1440),
+              rightPt: tw(pgMar, 'right', 1440),
+            },
+          }
+        : {}),
     })
   }
 

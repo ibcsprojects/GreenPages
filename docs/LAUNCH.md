@@ -23,7 +23,7 @@ Store and Google's OAuth verification forms.
 | Spike a PDF page that finds blank and ink-heavy pages | Built at `site/pdf-check/`, marked Experimental. |
 | Pick product ideas for v1.1 | Team decision. |
 | Word file tool (`site/docx-fix/`) | Built and tested in a browser with a sample file. **Needs a test with real Word files**: open the downloaded copy in Word and check it opens without a repair prompt. |
-| Word add-in | Not built yet. It will reuse `src/lib/ooxml/`. Needs a Microsoft Partner Center account to publish. |
+| Word add-in | Built and unit tested (see `docs/ADDIN.md`). **Needs a test in real Word** (sideload steps in that file). Fixes only what Word's API can do exactly; the rest point to the Word file tool. Needs a Microsoft Partner Center account to publish. |
 
 ### Live tests still needed
 

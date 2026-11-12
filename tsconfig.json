@@ -16,7 +16,7 @@
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
-    "types": ["chrome", "vite/client", "node"],
+    "types": ["chrome", "vite/client", "node", "office-js"],
     "baseUrl": ".",
     "paths": { "@/*": ["src/*"] }
   },
