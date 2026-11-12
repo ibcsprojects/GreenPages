@@ -16,9 +16,9 @@
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
-    "types": ["chrome", "vite/client", "node"],
+    "types": ["chrome", "vite/client", "node", "office-js"],
     "baseUrl": ".",
     "paths": { "@/*": ["src/*"] }
   },
-  "include": ["src", "manifest.config.ts", "vite.config.ts"]
+  "include": ["src", "manifest.config.ts", "vite.config.ts", "vite.site.config.ts"]
 }

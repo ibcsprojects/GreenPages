@@ -107,6 +107,13 @@ label:focus-within {
   gap: 8px 24px;
 }
 
+.site-footer .legal {
+  flex-basis: 100%;
+  margin: 8px 0 0;
+  max-width: 70ch;
+  font-size: 13px;
+}
+
 /* ---- buttons ---- */
 .btn {
   display: inline-flex;

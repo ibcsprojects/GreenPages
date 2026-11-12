@@ -25,6 +25,12 @@ PDF check that works with files from any app).
 Press Ctrl+P or Cmd+P in a document and GreenPages shows the page count and anything
 unfixed before the print dialog opens.
 
+## Also on the website
+
+- **Word file tool** (`site/docx-fix/`): choose a .docx, review the issues, download a fixed copy. It uses the same checks as the extension on Word's document XML (`src/lib/ooxml/`) and runs entirely in the browser. Build it with `npm run site:build`.
+- **Word add-in** (`site/addin/`, notes in `docs/ADDIN.md`): a task pane inside Word with the same checks. Try it with `npm run addin:dev`.
+- **PDF check** (`site/pdf-check/`): finds blank and ink-heavy pages in any PDF.
+
 ## Install
 
 GreenPages isn't in the Chrome Web Store yet. To try it now:
@@ -65,3 +71,11 @@ CI runs the typecheck, tests and build on every pull request. How the pieces fit
 ## Licence
 
 [MIT](LICENSE)
+
+## Credits
+
+Created by Manav Purswani and Cata Gamero.
+
+## Disclaimer
+
+GreenPages is an independent open-source project. It is not affiliated with, endorsed by or sponsored by Google. Google, Google Docs and Chrome are trademarks of Google LLC. The software is provided "as is" under the MIT licence, without warranty. It edits your document only when you click Apply, and Google Docs keeps version history so you can restore an earlier copy.

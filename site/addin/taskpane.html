@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GreenPages for Word</title>
+    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+    <link rel="stylesheet" href="addin.css" />
+  </head>
+  <body>
+    <header class="tp-head">
+      <img src="icon-32.png" width="24" height="24" alt="" />
+      <strong>GreenPages</strong>
+    </header>
+    <main>
+      <p id="summary" class="tp-summary" role="status" aria-live="polite">Reading your document…</p>
+      <p id="status" class="tp-status" role="alert"></p>
+      <div id="actions" class="fx-actions"></div>
+      <div id="results"></div>
+    </main>
+    <footer class="tp-foot">
+      <p>Your document is checked on this computer. Nothing is uploaded.</p>
+      <p><a href="../docx-fix/" target="_blank" rel="noopener">Word file tool</a> · <a href="../privacy.html" target="_blank" rel="noopener">Privacy</a></p>
+    </footer>
+    <script src="addin.js"></script>
+  </body>
+</html>

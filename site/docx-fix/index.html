@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fix a Word file before you print: GreenPages</title>
+    <meta
+      name="description"
+      content="Find highlights, oversized text, wide margins and blank pages in a Word .docx file and fix them. Runs in your browser, nothing is uploaded."
+    />
+    <link rel="icon" href="../assets/icon.png" />
+    <link rel="stylesheet" href="../styles.css" />
+    <link rel="stylesheet" href="../pdf-check/pdf-check.css" />
+    <link rel="stylesheet" href="docx-fix.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap">
+        <a class="brand" href="../"><img src="../assets/icon.png" alt="" />GreenPages</a>
+        <nav aria-label="Site">
+          <a href="../install.html">Install</a>
+          <a href="../guide.html">Guide</a>
+          <a href="./" aria-current="page">Word file</a>
+          <a href="../pdf-check/">PDF check</a>
+          <a href="../privacy.html">Privacy</a>
+          <a href="https://github.com/ibcsprojects/GreenPages">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <section class="pc-intro">
+        <h1>Fix a Word file before you print</h1>
+        <p>
+          Choose a Word .docx file. GreenPages finds highlights, oversized text, wide margins,
+          blank lines and wordy paragraphs, and fixes the ones you pick in a new copy. The file
+          stays on your computer. <span class="pc-tag">Experimental</span>
+        </p>
+      </section>
+
+      <label class="pc-drop" id="drop">
+        <input type="file" id="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+        <span class="pc-drop-main">Choose a .docx file or drop it here</span>
+        <span class="pc-drop-sub">Nothing is uploaded. Your original is never changed.</span>
+      </label>
+
+      <p class="pc-status" id="status" role="status" aria-live="polite"></p>
+
+      <div id="results" aria-live="polite"></div>
+
+      <section class="fx-help">
+        <h2>Good to know</h2>
+        <ul>
+          <li>
+            The page count is an estimate. Word may lay a page out slightly differently, so check
+            the copy in Word before you print.
+          </li>
+          <li>
+            Fields, text boxes, footnotes and section breaks are left exactly as they are.
+          </li>
+          <li>
+            Pages, Google Docs and LibreOffice can save or export a .docx too. For Google Docs
+            itself, the <a href="../install.html">Chrome extension</a> works inside the editor.
+          </li>
+        </ul>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap">
+        <span>GreenPages, MIT licence</span>
+        <span>Created by Manav Purswani and Cata Gamero</span>
+        <a href="../install.html">Install</a>
+        <a href="../guide.html">Guide</a>
+        <a href="../privacy.html">Privacy policy</a>
+        <a href="https://github.com/ibcsprojects/GreenPages">Source on GitHub</a>
+        <p class="legal">GreenPages is an independent open-source project. It is not affiliated with, endorsed by or sponsored by Google or Microsoft. Google, Google Docs, Chrome, Microsoft and Word are trademarks of their owners.</p>
+      </div>
+    </footer>
+
+    <script src="docx-fix.js"></script>
+  </body>
+</html>

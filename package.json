@@ -12,9 +12,14 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "site:vendor": "node scripts/vendor-pdfjs.mjs"
+    "site:vendor": "node scripts/vendor-pdfjs.mjs",
+    "notices": "node scripts/notices.mjs",
+    "site:build": "vite build --config vite.site.config.ts && vite build --config vite.site.config.ts --mode addin && node scripts/addin-manifest.mjs",
+    "site:serve": "python3 -m http.server 8123 --directory site",
+    "addin:dev": "SITE_URL=https://localhost:3000 npm run site:build && node scripts/addin-dev-server.mjs"
   },
   "dependencies": {
+    "fflate": "^0.8.3",
     "framer-motion": "^14.10.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -24,16 +29,19 @@
     "@crxjs/vite-plugin": "^2.0.0-beta.26",
     "@types/chrome": "^0.0.270",
     "@types/node": "^22.19.21",
+    "@types/office-js": "^1.0.617",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
+    "@xmldom/xmldom": "^0.9.12",
     "autoprefixer": "^10.4.20",
-    "pdfjs-dist": "^5.6.205",
+    "pdfjs-dist": "5.5.207",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.15",
     "typescript": "^5.6.3",
     "vite": "^5.4.11",
     "vitest": "^2.1.5"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "author": "Manav Purswani and Cata Gamero"
 }
