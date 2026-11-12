@@ -1,4 +1,4 @@
-# Generates GreenPages PNG assets from logo.jpeg (the green "GP printer" mark).
+# Generates Sparepage PNG assets from logo.jpeg (the green "GP printer" mark).
 # Keys the white background out to transparency (luminance -> alpha with unpremultiply
 # so edges don't leave a white halo), then rescales to each target size.
 #

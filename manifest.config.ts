@@ -2,15 +2,15 @@ import { defineManifest } from '@crxjs/vite-plugin'
 
 // The OAuth client is bound to one extension ID. Local unpacked builds use the dev client
 // below; the Chrome Web Store assigns its own ID, so store builds pass the client registered
-// for that ID: GREENPAGES_OAUTH_CLIENT_ID=... npm run build
+// for that ID: SPAREPAGE_OAUTH_CLIENT_ID=... npm run build
 const OAUTH_CLIENT_ID =
-  process.env.GREENPAGES_OAUTH_CLIENT_ID ??
+  process.env.SPAREPAGE_OAUTH_CLIENT_ID ??
   '415665395282-ci25olqg8gn4qjcbljgiqi9mobo282c2.apps.googleusercontent.com'
 
 // Manifest V3. crxjs reads this and emits dist/manifest.json with hashed asset paths.
 export default defineManifest({
   manifest_version: 3,
-  name: 'GreenPages: Eco Formatting for Docs',
+  name: 'Sparepage: Eco Formatting for Docs',
   version: '0.2.0',
   description:
     'Spots print waste in Google Docs (highlights, big fonts, blank pages, wordy text) and fixes it in one click. Runs in your browser.',
@@ -20,7 +20,7 @@ export default defineManifest({
     '128': 'icons/icon128.png',
   },
   action: {
-    default_title: 'GreenPages',
+    default_title: 'Sparepage',
     default_icon: {
       '16': 'icons/icon16.png',
       '48': 'icons/icon48.png',

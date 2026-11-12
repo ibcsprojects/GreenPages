@@ -74,7 +74,7 @@ function render() {
 
 Office.onReady(async (info) => {
   if (info.host !== Office.HostType.Word) {
-    summary.textContent = 'GreenPages for Word only runs inside Microsoft Word.'
+    summary.textContent = 'Sparepage for Word only runs inside Microsoft Word.'
     return
   }
   await run(() => session.scan())

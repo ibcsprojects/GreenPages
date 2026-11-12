@@ -13,9 +13,9 @@ export interface OverlayController {
 }
 
 export function mountOverlay(anchor?: () => DOMRect | null): OverlayController {
-  if (!document.getElementById('greenpages-overlay')) {
+  if (!document.getElementById('sparepage-overlay')) {
     const host = document.createElement('div')
-    host.id = 'greenpages-overlay'
+    host.id = 'sparepage-overlay'
     document.documentElement.appendChild(host)
     const shadow = host.attachShadow({ mode: 'open' })
     const style = document.createElement('style')

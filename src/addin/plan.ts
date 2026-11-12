@@ -1,4 +1,4 @@
-// Turns a GreenPages fix into exact steps for Word's own editing API, and lines Word's
+// Turns a Sparepage fix into exact steps for Word's own editing API, and lines Word's
 // paragraph list up with our document model so a step can never hit the wrong paragraph.
 //
 // Pure logic with no Office calls, so it can be tested without Word. Fixes that cannot be
@@ -31,7 +31,7 @@ export function alignParagraphs(model: DocModel, kinds: TopKind[], word: WordPar
   for (let k = 0; k < model.paragraphs.length; k++) {
     const kind = kinds[k]
     if (kind === 'other') {
-      return { ok: false, reason: 'This document has content controls or other structures GreenPages cannot line up safely.' }
+      return { ok: false, reason: 'This document has content controls or other structures Sparepage cannot line up safely.' }
     }
     if (kind === 'tbl') {
       wordIndex.push(null)

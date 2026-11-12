@@ -27,7 +27,7 @@ async function run(): Promise<void> {
 /** A keystroke or click that could have changed the document (not our own panel). */
 function looksLikeEdit(e: Event): boolean {
   if (!e.isTrusted) return false
-  if (e.composedPath().some((n) => (n as Element).id === 'greenpages-overlay')) return false
+  if (e.composedPath().some((n) => (n as Element).id === 'sparepage-overlay')) return false
   if (e.type === 'mouseup') return true
   const k = e as KeyboardEvent
   if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock'].includes(k.key)) return false

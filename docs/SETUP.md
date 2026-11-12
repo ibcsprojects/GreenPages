@@ -1,6 +1,6 @@
 # Developer setup
 
-GreenPages has no backend and needs no API keys. The only external setup is a Google Cloud
+Sparepage has no backend and needs no API keys. The only external setup is a Google Cloud
 OAuth client so the extension can read and edit Google Docs.
 
 ## 1. Build and load
@@ -27,7 +27,7 @@ The toolbar icon opens a demo document that works with no Google setup at all.
 5. Build with that client ID:
 
    ```bash
-   GREENPAGES_OAUTH_CLIENT_ID=<your client id> npm run build
+   SPAREPAGE_OAUTH_CLIENT_ID=<your client id> npm run build
    ```
 
    Without the variable, the build uses the team's development client in
@@ -39,7 +39,7 @@ fixed ID, so a store build needs an OAuth client registered for that ID.
 
 ## 3. Check it works
 
-- Open one of your Google Docs. The GreenPages button appears in the editor's bottom-right
+- Open one of your Google Docs. The Sparepage button appears in the editor's bottom-right
   corner. Click it, then **Connect to Google Docs**.
 - Apply a fix: the document changes in Docs.
 - The panel shows "N pages" when the exact count from Docs' PDF export works, or "About N

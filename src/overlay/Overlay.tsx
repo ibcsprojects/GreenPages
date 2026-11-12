@@ -75,10 +75,10 @@ function Launcher() {
 
   const count = flags.length
   const label = needsAccess
-    ? 'GreenPages: connect to check this document'
+    ? 'Sparepage: connect to check this document'
     : loading && !doc
-      ? 'GreenPages: checking this document'
-      : `GreenPages: ${count} print issue${count === 1 ? '' : 's'}`
+      ? 'Sparepage: checking this document'
+      : `Sparepage: ${count} print issue${count === 1 ? '' : 's'}`
 
   return (
     <motion.button
@@ -133,7 +133,7 @@ function Panel() {
     <motion.div
       ref={ref}
       role="dialog"
-      aria-label="GreenPages print check"
+      aria-label="Sparepage print check"
       initial={{ opacity: 0, scale: 0.96, y: 8 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.98, y: 4, transition: { duration: 0.12, ease: 'easeIn' } }}
@@ -169,7 +169,7 @@ function PanelHeader() {
     <header className="flex items-center gap-2 border-b border-leaf-100 bg-white px-3.5 py-2.5">
       <img src={logoUrl()} alt="" className="h-6 w-6" />
       <div className="min-w-0 flex-1 leading-tight">
-        <div className="text-[13px] font-semibold text-bark-900">GreenPages</div>
+        <div className="text-[13px] font-semibold text-bark-900">Sparepage</div>
         <div className="truncate text-[11px] text-bark-700/80">
           {docSource === 'sample' ? 'Sample document' : 'Print check for this document'}
         </div>
@@ -229,7 +229,7 @@ function ConnectPrompt() {
     <div className="px-4 pb-4 pt-3.5">
       <h2 className="text-[15px] font-semibold text-bark-900">Check this document before you print</h2>
       <p className="mt-1.5 text-[13px] leading-relaxed text-bark-700/80">
-        GreenPages reads this document to find highlights, oversized text, blank pages and wordy
+        Sparepage reads this document to find highlights, oversized text, blank pages and wordy
         paragraphs, then applies only the fixes you accept. It runs in your browser, and nothing
         is sent to us.
       </p>

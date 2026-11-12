@@ -1,8 +1,8 @@
 {
-  "name": "greenpages",
+  "name": "sparepage",
   "version": "0.2.0",
   "private": true,
-  "description": "GreenPages: an eco-formatting assistant for Google Docs. Flags wasteful print formatting and suggests paper and ink saving fixes you accept one at a time.",
+  "description": "Sparepage: an eco-formatting assistant for Google Docs. Flags wasteful print formatting and suggests paper and ink saving fixes you accept one at a time.",
   "type": "module",
   "scripts": {
     "dev": "vite",

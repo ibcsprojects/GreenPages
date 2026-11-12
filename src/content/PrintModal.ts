@@ -46,7 +46,7 @@ export type PrintModalResult = 'print' | 'review' | 'cancel'
 export function showPrintModal(summary: PrintSummary): Promise<PrintModalResult> {
   return new Promise((resolve) => {
     const host = document.createElement('div')
-    host.id = 'greenpages-print-modal'
+    host.id = 'sparepage-print-modal'
     document.documentElement.appendChild(host)
     const root = host.attachShadow({ mode: 'open' })
 
@@ -64,7 +64,7 @@ export function showPrintModal(summary: PrintSummary): Promise<PrintModalResult>
     const wrap = document.createElement('div')
     wrap.className = 'backdrop'
     wrap.innerHTML = `
-      <div class="modal" role="dialog" aria-modal="true" aria-label="GreenPages print check">
+      <div class="modal" role="dialog" aria-modal="true" aria-label="Sparepage print check">
         <div class="head">
           <h1>Wait! Before you print...</h1>
           <p>A quick eco check so you don’t waste paper or ink.</p>

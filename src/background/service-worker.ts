@@ -54,7 +54,7 @@ async function loadSettings() {
 function sessionFor(sender: chrome.runtime.MessageSender): Session {
   const docId = docIdFromUrl(sender.tab?.url)
   const isExtensionPage = (sender.url ?? '').startsWith(chrome.runtime.getURL(''))
-  if (!docId && !isExtensionPage) throw new Error('Open a Google Doc to use GreenPages.')
+  if (!docId && !isExtensionPage) throw new Error('Open a Google Doc to use Sparepage.')
   const key = docId ?? 'sample'
   let s = sessions.get(key)
   if (!s) {
@@ -101,7 +101,7 @@ async function load(s: Session, interactive: boolean): Promise<void> {
   } catch (err) {
     s.loaded = false
     s.notice = explainLoadError(String((err as Error)?.message ?? err))
-    console.warn('[GreenPages] Docs API load failed:', err)
+    console.warn('[Sparepage] Docs API load failed:', err)
   } finally {
     setInteractiveAuth(false)
   }
@@ -110,7 +110,7 @@ async function load(s: Session, interactive: boolean): Promise<void> {
 /** Turn Chrome / Google sign-in and Docs API errors into something a person can act on. */
 function explainLoadError(raw: string): string {
   if (/bad client id|invalid_client|client id|OAuth2 not granted/i.test(raw)) {
-    return `Google sign-in isn't set up for this copy of GreenPages. Its extension ID is ${chrome.runtime.id}: register that ID on the Chrome extension OAuth client in Google Cloud, then click Connect again.`
+    return `Google sign-in isn't set up for this copy of Sparepage. Its extension ID is ${chrome.runtime.id}: register that ID on the Chrome extension OAuth client in Google Cloud, then click Connect again.`
   }
   if (/did not approve|denied|cancel|access_denied/i.test(raw)) {
     return 'Sign-in didn\'t finish. If Google said this app is still being tested, your account must be added as a test user. Then click Connect again.'
@@ -154,7 +154,7 @@ async function refreshPages(s: Session) {
       s.pagesExact = true
       return
     } catch (err) {
-      console.info('[GreenPages] exact page count unavailable, using estimate:', err)
+      console.info('[Sparepage] exact page count unavailable, using estimate:', err)
     }
   }
   s.pages = estimatePages(s.doc).pages
@@ -187,15 +187,15 @@ async function ensureReady(s: Session, interactive = false) {
 const DEMO_URL = () => chrome.runtime.getURL('src/demo/index.html')
 
 // Toolbar icon: on a Google Doc, open or close the in-editor overlay. Anywhere else, open
-// the demo document so the user can see what GreenPages does.
+// the demo document so the user can see what Sparepage does.
 chrome.action.onClicked.addListener(async (tab) => {
   if (tab.id != null && docIdFromUrl(tab.url)) {
     try {
       await chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_OVERLAY' } satisfies Msg)
     } catch {
-      // The tab was open before GreenPages was installed, so it has no content script.
+      // The tab was open before Sparepage was installed, so it has no content script.
       await chrome.action.setBadgeText({ tabId: tab.id, text: '↻' })
-      await chrome.action.setTitle({ tabId: tab.id, title: 'Reload this tab to use GreenPages' })
+      await chrome.action.setTitle({ tabId: tab.id, title: 'Reload this tab to use Sparepage' })
     }
     return
   }
