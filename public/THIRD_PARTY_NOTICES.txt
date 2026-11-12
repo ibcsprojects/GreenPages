@@ -1,4 +1,4 @@
-Sparepage includes the following open-source libraries.
+SparePage includes the following open-source libraries.
 
 ========================================================================
 fflate 0.8.3 (MIT)

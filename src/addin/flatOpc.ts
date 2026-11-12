@@ -1,5 +1,5 @@
 // Word's body.getOoxml() returns a "flat OPC" package: one XML file holding every part of a
-// .docx. This pulls out the two parts Sparepage needs.
+// .docx. This pulls out the two parts SparePage needs.
 
 import type { XmlImpl } from '../lib/ooxml/ooxml'
 

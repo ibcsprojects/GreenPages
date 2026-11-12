@@ -10,7 +10,7 @@ const OAUTH_CLIENT_ID =
 // Manifest V3. crxjs reads this and emits dist/manifest.json with hashed asset paths.
 export default defineManifest({
   manifest_version: 3,
-  name: 'Sparepage: Eco Formatting for Docs',
+  name: 'SparePage: Eco Formatting for Docs',
   version: '0.2.0',
   description:
     'Spots print waste in Google Docs (highlights, big fonts, blank pages, wordy text) and fixes it in one click. Runs in your browser.',
@@ -20,7 +20,7 @@ export default defineManifest({
     '128': 'icons/icon128.png',
   },
   action: {
-    default_title: 'Sparepage',
+    default_title: 'SparePage',
     default_icon: {
       '16': 'icons/icon16.png',
       '48': 'icons/icon48.png',

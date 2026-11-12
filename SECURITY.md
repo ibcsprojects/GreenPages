@@ -1,6 +1,6 @@
 # Security policy
 
-Sparepage is a small open-source project. It has no server and stores no user data, but it does
+SparePage is a small open-source project. It has no server and stores no user data, but it does
 run inside people's browsers and reads their documents, so we take security reports seriously.
 
 ## Reporting a problem
@@ -23,7 +23,7 @@ that.
 - The Word add-in and the Word file and PDF check pages
 - The website at sparepage.app
 
-Sparepage runs entirely in the browser and sends no documents to us, so the most useful reports
+SparePage runs entirely in the browser and sends no documents to us, so the most useful reports
 are about things like unexpected data leaving the browser, unsafe handling of document content,
 over-broad permissions, or ways another site could interfere with the extension.
 

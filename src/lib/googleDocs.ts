@@ -121,7 +121,7 @@ export function tableCellStarts(api: ApiDoc, atOrAfter: number): number[] {
 // --- Exact page count (experimental) ---------------------------------------
 /**
  * The real number of printed pages, read from Docs' own PDF export using the user's
- * existing Google session. This replaces the old Drive API export, so Sparepage needs no
+ * existing Google session. This replaces the old Drive API export, so SparePage needs no
  * Drive scope (Drive scopes are "restricted" and require a paid annual security audit).
  *
  * Undocumented by Google: it may be blocked or change without notice. Every failure throws

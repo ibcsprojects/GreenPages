@@ -3,44 +3,43 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sparepage: print fewer pages from Google Docs</title>
+    <title>SparePage: print fewer pages from Google Docs</title>
     <meta
       name="description"
-      content="Sparepage is a free Chrome extension that finds the formatting in Google Docs that wastes paper and ink, and fixes it in one click. It runs in your browser."
+      content="SparePage is a free Chrome extension that finds the formatting in Google Docs that wastes paper and ink, and fixes it in one click. It runs in your browser."
     />
     <link rel="canonical" href="https://sparepage.app/" />
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Sparepage" />
-    <meta property="og:title" content="Sparepage: print fewer pages from Google Docs" />
-    <meta property="og:description" content="Sparepage is a free Chrome extension that finds the formatting in Google Docs that wastes paper and ink, and fixes it in one click. It runs in your browser." />
+    <meta property="og:site_name" content="SparePage" />
+    <meta property="og:title" content="SparePage: print fewer pages from Google Docs" />
+    <meta property="og:description" content="SparePage is a free Chrome extension that finds the formatting in Google Docs that wastes paper and ink, and fixes it in one click. It runs in your browser." />
     <meta property="og:url" content="https://sparepage.app/" />
     <meta name="twitter:card" content="summary" />
-    <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Sparepage","url":"https://sparepage.app/","description":"Sparepage is a free Chrome extension that finds the formatting in Google Docs that wastes paper and ink, and fixes it in one click. It runs in your browser.","applicationCategory":"UtilitiesApplication","operatingSystem":"Chrome, Microsoft Word, any modern browser","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script>
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"SparePage","url":"https://sparepage.app/","description":"SparePage is a free Chrome extension that finds the formatting in Google Docs that wastes paper and ink, and fixes it in one click. It runs in your browser.","applicationCategory":"UtilitiesApplication","operatingSystem":"Chrome, Microsoft Word, any modern browser","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script>
     <link rel="icon" href="assets/icon.png" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <header class="site-header">
       <div class="wrap">
-        <a class="brand" href="./"><img src="assets/icon.png" alt="" />Sparepage</a>
+        <a class="brand" href="./"><img src="assets/icon.png" alt="" /><span class="brand-text"><b>SparePage</b><small>Print fewer pages</small></span></a>
         <nav aria-label="Site">
-          <a href="install.html">Install</a>
-          <a href="guide.html">Guide</a>
+          <a href="install.html">Google Docs</a>
           <a href="docx-fix/">Word file</a>
           <a href="pdf-check/">PDF check</a>
-          <a href="privacy.html">Privacy</a>
-          <a href="https://github.com/ibcsprojects/GreenPages">GitHub</a>
+          <a href="guide.html">Guide</a>
         </nav>
+        <a class="btn btn-primary btn-sm" href="install.html">Install for Chrome</a>
       </div>
     </header>
 
     <main>
-      <div class="wrap">
+      <div class="hero-band"><div class="wrap">
         <section class="hero" aria-labelledby="hero-title">
           <div>
             <h1 id="hero-title">Print fewer pages from Google Docs.</h1>
             <p class="lede">
-              Sparepage finds the formatting that wastes paper and ink, then fixes it in one
+              SparePage finds the formatting that wastes paper and ink, then fixes it in one
               click. It runs in your browser.
             </p>
             <div class="actions">
@@ -54,12 +53,58 @@
               src="assets/overlay.png"
               width="1400"
               height="930"
-              alt="The Sparepage panel open over a Google Doc, listing eight print issues such as wide margins, an oversized image and highlighted text, with an Apply all button."
+              alt="The SparePage panel open over a Google Doc, listing eight print issues such as wide margins, an oversized image and highlighted text, with an Apply all button."
             />
             <figcaption>The panel sits in the corner of the editor, like a spell checker.</figcaption>
           </figure>
         </section>
-      </div>
+      </div></div>
+
+      <section class="section" aria-labelledby="tools-title">
+        <div class="wrap">
+          <h2 id="tools-title">Fix print waste where you write</h2>
+          <p>
+            Pick the app you use. Each tool finds the same kinds of waste, and none of them sends
+            your document to us.
+          </p>
+          <div class="tools">
+            <article class="tool tool-main">
+              <h3>Google Docs</h3>
+              <p>
+                The Chrome extension checks your document as you write, shows the page count, and
+                fixes each issue in one click.
+              </p>
+              <a class="btn btn-primary" href="install.html">Install for Chrome</a>
+            </article>
+            <article class="tool">
+              <h3>Word</h3>
+              <p>
+                Drop in a .docx file and download a corrected copy. It all happens in your
+                browser. A Word add-in is in testing.
+              </p>
+              <a class="btn btn-quiet" href="docx-fix/">Fix a Word file</a>
+            </article>
+            <article class="tool">
+              <h3>PDF</h3>
+              <p>
+                Check a PDF from any app for blank and ink-heavy pages before you print. This one
+                is experimental.
+              </p>
+              <a class="btn btn-quiet" href="pdf-check/">Check a PDF</a>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="trust" aria-label="What to expect">
+        <ul>
+          <li><b>Free</b> to use</li>
+          <li><b>No account</b> with us</li>
+          <li><b>No AI</b>, no tracking</li>
+          <li><b>Open source</b> under MIT</li>
+          <li><b>No server</b> receives your files</li>
+        </ul>
+      </section>
 
       <section class="section" aria-labelledby="catches-title">
         <div class="wrap">
@@ -110,12 +155,12 @@
         </div>
       </section>
 
-      <section class="section" aria-labelledby="calc-title">
+      <section class="section" id="calculator" aria-labelledby="calc-title">
         <div class="wrap split">
           <div>
             <h2 id="calc-title">How much paper could you save?</h2>
             <p>
-              Fill in your own numbers. This is plain arithmetic, not a promise: Sparepage shows
+              Fill in your own numbers. This is plain arithmetic, not a promise: SparePage shows
               the real saving for each document in its panel.
             </p>
             <p class="note">
@@ -154,7 +199,7 @@
           <div>
             <h2 id="private-title">Your document stays with you</h2>
             <p>
-              Sparepage has no server. It reads the document you have open through Google's Docs
+              SparePage has no server. It reads the document you have open through Google's Docs
               API, checks it inside your browser, and writes back only the fixes you accept.
             </p>
             <p>
@@ -174,28 +219,18 @@
       </section>
 
       <section class="section" aria-labelledby="print-title">
-        <div class="wrap split">
-          <div>
-            <h2 id="print-title">A check before you print</h2>
-            <p>
-              Press Ctrl+P or Cmd+P in a document that still has issues and Sparepage shows the
-              page count, what is left to fix, and a reminder to print double-sided. If the
-              document is already clean, it stays out of your way and the normal print dialog
-              opens.
-            </p>
-          </div>
-          <div>
-            <h2>Not using Google Docs?</h2>
-            <p>
-              The <a href="docx-fix/">Word file tool</a> fixes a .docx in your browser and gives
-              you a corrected copy. The <a href="pdf-check/">PDF check</a> works with a PDF from
-              any app and finds blank and ink-heavy pages. Neither one uploads your file.
-            </p>
-          </div>
+        <div class="wrap">
+          <h2 id="print-title">A check before you print</h2>
+          <p>
+            Press Ctrl+P or Cmd+P in a document that still has issues and SparePage shows the
+            page count, what is left to fix, and a reminder to print double-sided. If the
+            document is already clean, it stays out of your way and the normal print dialog
+            opens.
+          </p>
         </div>
       </section>
 
-      <section class="section" aria-labelledby="faq-title">
+      <section class="section" id="faq" aria-labelledby="faq-title">
         <div class="wrap">
           <h2 id="faq-title">Questions</h2>
           <div class="faq">
@@ -227,7 +262,7 @@
               <summary>Is the page count exact?</summary>
               <p>
                 It uses Google's own PDF export, so it matches what prints. If that is not
-                available for a document, Sparepage shows an estimate and labels it
+                available for a document, SparePage shows an estimate and labels it
                 &ldquo;estimate&rdquo;.
               </p>
             </details>
@@ -244,7 +279,7 @@
               <p>
                 Open your
                 <a href="https://myaccount.google.com/permissions">Google account permissions</a>,
-                choose Sparepage, and remove access. Removing the extension from Chrome stops it
+                choose SparePage, and remove access. Removing the extension from Chrome stops it
                 running at all.
               </p>
             </details>
@@ -267,16 +302,42 @@
 
     <footer class="site-footer">
       <div class="wrap">
-        <span>Sparepage, MIT licence</span>
-        <span>Created by Manav Purswani and Cata Gamero</span>
-        <a href="install.html">Install</a>
-        <a href="guide.html">Guide</a>
-        <a href="privacy.html">Privacy policy</a>
-        <a href="terms.html">Terms</a>
-        <a href="https://github.com/ibcsprojects/GreenPages">Source on GitHub</a>
-        <a href="https://github.com/ibcsprojects/GreenPages/issues">Contact and support</a>
-        <a href="mailto:support@sparepage.app">Email us</a>
-        <p class="legal">Sparepage is an independent open-source project. It is not affiliated with, endorsed by or sponsored by Google. Google, Google Docs and Chrome are trademarks of Google LLC.</p>
+        <div class="foot-grid">
+          <div class="foot-brand">
+            <a class="brand" href="./"><img src="assets/icon.png" alt="" /><span class="brand-text"><b>SparePage</b></span></a>
+            <p>Find and fix the formatting that wastes paper and ink. Free and open source.</p>
+          </div>
+          <nav class="foot-col" aria-label="Tools">
+            <h2>Tools</h2>
+            <a href="install.html">Google Docs extension</a>
+            <a href="docx-fix/">Word file tool</a>
+            <a href="pdf-check/">PDF check</a>
+          </nav>
+          <nav class="foot-col" aria-label="Learn">
+            <h2>Learn</h2>
+            <a href="guide.html">Do it by hand</a>
+            <a href="install.html">Install</a>
+            <a href="#calculator">Paper calculator</a>
+            <a href="#faq">Questions</a>
+          </nav>
+          <nav class="foot-col" aria-label="Project">
+            <h2>Project</h2>
+            <a href="https://github.com/ibcsprojects/GreenPages">Source on GitHub</a>
+            <a href="https://github.com/ibcsprojects/GreenPages/issues">Report an issue</a>
+            <a href="https://github.com/ibcsprojects/GreenPages/security/policy">Security policy</a>
+            <a href="mailto:support@sparepage.app">Email support</a>
+          </nav>
+          <nav class="foot-col" aria-label="Legal">
+            <h2>Legal</h2>
+            <a href="privacy.html">Privacy policy</a>
+            <a href="terms.html">Terms of use</a>
+          </nav>
+        </div>
+        <div class="foot-base">
+          <span>SparePage, MIT licence</span>
+          <span>Created by Manav Purswani and Cata Gamero</span>
+          <p class="legal">SparePage is an independent open-source project. It is not affiliated with, endorsed by or sponsored by Google or Microsoft. Google, Google Docs and Chrome are trademarks of Google LLC. Microsoft and Word are trademarks of the Microsoft group of companies.</p>
+        </div>
       </div>
     </footer>
 

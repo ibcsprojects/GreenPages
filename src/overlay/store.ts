@@ -25,7 +25,7 @@ interface OverlayState {
   pagesExact: boolean
   /** Whether we're analyzing the live doc or the offline sample. */
   docSource: 'live' | 'sample' | null
-  /** The user hasn't connected Sparepage to Google Docs yet. */
+  /** The user hasn't connected SparePage to Google Docs yet. */
   needsAccess: boolean
   /** A heads-up from the worker (e.g. couldn't open the doc), or null. */
   notice: string | null

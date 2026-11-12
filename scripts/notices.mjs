@@ -35,7 +35,7 @@ function visit(name, fromDir) {
 }
 for (const dep of Object.keys(pkg.dependencies ?? {})) visit(dep, root)
 
-let out = 'Sparepage includes the following open-source libraries.\n'
+let out = 'SparePage includes the following open-source libraries.\n'
 for (const [name, info] of [...seen].sort(([a], [b]) => a.localeCompare(b))) {
   out += `\n${'='.repeat(72)}\n${name} ${info.version} (${info.license})\n${'='.repeat(72)}\n\n${info.text}\n`
 }

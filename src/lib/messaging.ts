@@ -35,7 +35,7 @@ export type Msg =
       pages?: number
       /** True when `pages` came from Docs' own PDF export; false when it's our estimate. */
       pagesExact?: boolean
-      /** The user hasn't connected Sparepage to Google Docs yet (no UI was shown). */
+      /** The user hasn't connected SparePage to Google Docs yet (no UI was shown). */
       needsAccess?: boolean
       /** A user-facing heads-up, e.g. "couldn't open your doc". */
       notice?: string
@@ -65,7 +65,7 @@ export type Msg =
 /** Thrown when the content script outlives the extension (reload/update/disable). */
 export class ExtensionContextInvalidatedError extends Error {
   constructor() {
-    super('Sparepage was updated. Reload this page to reconnect.')
+    super('SparePage was updated. Reload this page to reconnect.')
     this.name = 'ExtensionContextInvalidatedError'
   }
 }

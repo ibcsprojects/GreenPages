@@ -11,7 +11,7 @@
   <Version>0.1.0.0</Version>
   <ProviderName>Manav Purswani and Cata Gamero</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="Sparepage"/>
+  <DisplayName DefaultValue="SparePage"/>
   <Description DefaultValue="Finds the formatting in a Word document that wastes paper and ink, and fixes what it safely can."/>
   <IconUrl DefaultValue="{{BASE_URL}}/addin/icon-64.png"/>
   <HighResolutionIconUrl DefaultValue="{{BASE_URL}}/addin/icon-128.png"/>
@@ -37,14 +37,14 @@
         <DesktopFormFactor>
           <ExtensionPoint xsi:type="PrimaryCommandSurface">
             <OfficeTab id="TabHome">
-              <Group id="Sparepage.Group">
+              <Group id="SparePage.Group">
                 <Label resid="Group.Label"/>
                 <Icon>
                   <bt:Image size="16" resid="Icon.16x16"/>
                   <bt:Image size="32" resid="Icon.32x32"/>
                   <bt:Image size="80" resid="Icon.80x80"/>
                 </Icon>
-                <Control xsi:type="Button" id="Sparepage.OpenPane">
+                <Control xsi:type="Button" id="SparePage.OpenPane">
                   <Label resid="Button.Label"/>
                   <Supertip>
                     <Title resid="Button.Label"/>
@@ -56,7 +56,7 @@
                     <bt:Image size="80" resid="Icon.80x80"/>
                   </Icon>
                   <Action xsi:type="ShowTaskpane">
-                    <TaskpaneId>Sparepage.Pane</TaskpaneId>
+                    <TaskpaneId>SparePage.Pane</TaskpaneId>
                     <SourceLocation resid="Taskpane.Url"/>
                   </Action>
                 </Control>
@@ -76,7 +76,7 @@
         <bt:Url id="Taskpane.Url" DefaultValue="{{BASE_URL}}/addin/taskpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="Group.Label" DefaultValue="Sparepage"/>
+        <bt:String id="Group.Label" DefaultValue="SparePage"/>
         <bt:String id="Button.Label" DefaultValue="Print check"/>
       </bt:ShortStrings>
       <bt:LongStrings>

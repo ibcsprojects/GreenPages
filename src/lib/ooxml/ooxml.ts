@@ -1,5 +1,5 @@
 // Reads and edits Word's document XML (WordprocessingML) with the same DocModel and
-// EditActions the Google Docs adapter uses, so every Sparepage check works on Word files
+// EditActions the Google Docs adapter uses, so every SparePage check works on Word files
 // too. Two things use this: the browser tool that fixes a .docx file, and the Word add-in
 // (Word hands the add-in the same XML).
 //

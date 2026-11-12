@@ -42,7 +42,7 @@ function DemoPage() {
           <div className="mx-auto flex max-w-5xl items-center gap-3 px-6 py-3">
             <img src={chrome.runtime.getURL('icons/icon48.png')} alt="" className="h-7 w-7" />
             <div className="leading-tight">
-              <div className="text-sm font-semibold text-bark-900">Sparepage demo</div>
+              <div className="text-sm font-semibold text-bark-900">SparePage demo</div>
               <div className="text-xs text-bark-700/80">
                 A sample document full of print waste. Try the fixes in the panel.
               </div>
@@ -56,7 +56,7 @@ function DemoPage() {
             <p className="text-sm text-bark-700/80">Loading the sample…</p>
           )}
           <p className="mx-auto mt-6 max-w-[640px] text-center text-xs text-bark-700/80">
-            To check your own writing, open any Google Doc. Sparepage appears in the
+            To check your own writing, open any Google Doc. SparePage appears in the
             bottom-right corner of the editor.
           </p>
         </main>

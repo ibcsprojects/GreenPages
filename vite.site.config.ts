@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => {
       lib: {
         entry: resolve(__dirname, addin ? 'src/addin/main.ts' : 'src/web/main.ts'),
         formats: ['iife'] as ['iife'],
-        name: addin ? 'SparepageAddin' : 'SparepageDocxFix',
+        name: addin ? 'SparePageAddin' : 'SparePageDocxFix',
         fileName: () => (addin ? 'addin.js' : 'docx-fix.js'),
       },
     },

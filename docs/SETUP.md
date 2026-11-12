@@ -1,6 +1,6 @@
 # Developer setup
 
-Sparepage has no backend and needs no API keys. The only external setup is a Google Cloud
+SparePage has no backend and needs no API keys. The only external setup is a Google Cloud
 OAuth client so the extension can read and edit Google Docs.
 
 ## 1. Build and load
@@ -39,7 +39,7 @@ fixed ID, so a store build needs an OAuth client registered for that ID.
 
 ## 3. Check it works
 
-- Open one of your Google Docs. The Sparepage button appears in the editor's bottom-right
+- Open one of your Google Docs. The SparePage button appears in the editor's bottom-right
   corner. Click it, then **Connect to Google Docs**.
 - Apply a fix: the document changes in Docs.
 - The panel shows "N pages" when the exact count from Docs' PDF export works, or "About N

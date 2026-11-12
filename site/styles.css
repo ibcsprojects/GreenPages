@@ -1,4 +1,4 @@
-/* Sparepage site: one accent (leaf green), one radius scale (8 / 14px), light theme. */
+/* SparePage site: one accent (leaf green), one radius scale (8 / 14px), light theme. */
 :root {
   --ink: #1f2417;
   --ink-soft: #4b4d3c;
@@ -59,58 +59,106 @@ label:focus-within {
 
 /* ---- header / footer ---- */
 .site-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   border-bottom: 1px solid var(--line);
   background: var(--surface);
 }
 .site-header .wrap {
   display: flex;
   align-items: center;
-  gap: 12px;
-  height: 60px;
+  gap: 20px;
+  min-height: 64px;
 }
 .brand {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-weight: 650;
   color: var(--ink);
   text-decoration: none;
 }
 .brand img {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
+}
+.brand-text b {
+  display: block;
+  font-weight: 680;
+  line-height: 1.15;
+}
+.brand-text small {
+  display: block;
+  font-size: 12px;
+  line-height: 1.2;
+  color: var(--ink-faint);
 }
 .site-header nav {
   margin-left: auto;
   display: flex;
-  gap: 20px;
+  gap: 4px;
   font-size: 15px;
+  font-weight: 500;
 }
 .site-header nav a {
+  padding: 22px 10px 20px;
   color: var(--ink-soft);
   text-decoration: none;
+  border-bottom: 2px solid transparent;
 }
 .site-header nav a:hover {
   color: var(--accent-strong);
+}
+.site-header nav a[aria-current='page'] {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
 }
 
 .site-footer {
   border-top: 1px solid var(--line);
   margin-top: 96px;
-  padding: 28px 0 40px;
+  padding: 48px 0 40px;
+  background: var(--surface);
   color: var(--ink-faint);
   font-size: 14px;
 }
-.site-footer .wrap {
+.foot-grid {
+  display: grid;
+  grid-template-columns: 1.6fr repeat(4, minmax(0, 1fr));
+  gap: 32px;
+}
+.foot-brand p {
+  margin: 12px 0 0;
+  max-width: 30ch;
+}
+.foot-col h2 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--ink);
+}
+.foot-col a {
+  display: block;
+  padding: 3px 0;
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+.foot-col a:hover {
+  color: var(--accent-strong);
+  text-decoration: underline;
+}
+.foot-base {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 24px;
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
 }
-
 .site-footer .legal {
   flex-basis: 100%;
-  margin: 8px 0 0;
-  max-width: 70ch;
+  margin: 4px 0 0;
+  max-width: 80ch;
   font-size: 13px;
 }
 
@@ -141,16 +189,21 @@ label:focus-within {
 .btn-quiet:hover {
   border-color: #c9d6c3;
 }
+.btn-sm {
+  padding: 9px 16px;
+  font-size: 14px;
+}
 
 /* ---- home: hero ---- */
+.hero-band {
+  background: linear-gradient(180deg, #e9f7ee 0%, var(--bg) 100%);
+}
 .hero {
   display: grid;
   grid-template-columns: minmax(0, 6fr) minmax(0, 6fr);
   gap: 48px;
   align-items: center;
-  padding: 56px 0 24px;
-  min-height: calc(100vh - 60px - 40px);
-  max-height: 820px;
+  padding: 64px 0 56px;
 }
 .hero h1 {
   font-size: clamp(34px, 4vw, 50px);
@@ -163,7 +216,7 @@ label:focus-within {
   font-size: 19px;
   color: var(--ink-soft);
   margin: 20px 0 28px;
-  max-width: 30ch;
+  max-width: 34ch;
 }
 .hero .actions {
   display: flex;
@@ -213,21 +266,78 @@ label:focus-within {
   padding: 0;
   list-style: none;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  border-top: 1px solid var(--line);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
 }
 .catches li {
-  display: grid;
-  grid-template-columns: 200px 1fr;
-  gap: 16px;
-  padding: 16px 24px 16px 0;
-  border-bottom: 1px solid var(--line);
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
 }
 .catches b {
-  font-weight: 620;
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 650;
 }
 .catches span {
   color: var(--ink-soft);
+  font-size: 15px;
+}
+
+/* ---- home: where you write, and the trust strip ---- */
+.tools {
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.tool {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+.tool-main {
+  border-color: #bfe3cc;
+  box-shadow: 0 12px 32px rgba(21, 128, 61, 0.1);
+}
+.tool h3 {
+  margin: 0 0 8px;
+  font-size: 21px;
+  letter-spacing: -0.01em;
+}
+.tool p {
+  margin: 0 0 22px;
+  color: var(--ink-soft);
+}
+.tool .btn {
+  margin-top: auto;
+}
+.trust {
+  margin-top: 56px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.trust ul {
+  margin: 0 auto;
+  padding: 18px 24px;
+  max-width: var(--max);
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px 24px;
+  font-size: 15px;
+  color: var(--ink-soft);
+}
+.trust b {
+  color: var(--ink);
+  font-weight: 650;
 }
 
 .split {
@@ -451,6 +561,18 @@ label:focus-within {
   gap: 12px;
 }
 
+@media (max-width: 1000px) {
+  .catches {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .foot-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .foot-brand {
+    grid-column: 1 / -1;
+  }
+}
+
 @media (max-width: 860px) {
   .steps {
     grid-template-columns: 1fr;
@@ -458,24 +580,40 @@ label:focus-within {
   }
   .hero {
     grid-template-columns: 1fr;
-    min-height: 0;
-    max-height: none;
     gap: 32px;
-    padding-top: 40px;
+    padding: 40px 0 40px;
   }
-  .catches {
+  .tools {
     grid-template-columns: 1fr;
-  }
-  .catches li {
-    grid-template-columns: 1fr;
-    gap: 2px;
   }
   .split {
     grid-template-columns: 1fr;
     gap: 28px;
   }
+  .site-header .wrap {
+    flex-wrap: wrap;
+    gap: 0 12px;
+    padding-top: 10px;
+  }
+  .site-header .btn {
+    margin-left: auto;
+  }
   .site-header nav {
-    gap: 14px;
+    order: 3;
+    flex-basis: 100%;
+    margin-left: -8px;
+    gap: 0;
     font-size: 14px;
+    overflow-x: auto;
+  }
+  .site-header nav a {
+    padding: 10px 8px 8px;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 560px) {
+  .catches {
+    grid-template-columns: 1fr;
   }
 }
