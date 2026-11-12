@@ -13,6 +13,10 @@ export default defineConfig({
     target: 'esnext',
     outDir: 'dist',
     emptyOutDir: true,
+    rollupOptions: {
+      // Extension pages that aren't referenced from the manifest.
+      input: { demo: resolve(__dirname, 'src/demo/index.html') },
+    },
   },
   server: {
     port: 5173,

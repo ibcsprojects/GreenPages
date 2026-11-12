@@ -1,4 +1,4 @@
-// The edit seam. The side panel never touches a DocModel directly — it asks an
+// The edit seam. The overlay never touches a DocModel directly — it asks an
 // EditBackend to apply an EditAction. Today that's MockDocsBackend (mutates the bundled
 // sample doc, fully working offline). When OAuth + the Docs API are configured, swap in
 // GoogleDocsBackend (below) with no UI changes: it maps each EditAction to a Google Docs

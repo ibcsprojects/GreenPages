@@ -1,22 +1,22 @@
-// Layer 2 — Print Intercept. Catches Ctrl/Cmd+P (and the browser's beforeprint event)
-// inside a Google Doc, then shows the eco-check modal before any print dialog opens.
+// Print intercept. Catches Ctrl/Cmd+P (and the browser's beforeprint event) inside a
+// Google Doc, then shows the eco-check modal before any print dialog opens.
 
 import { sendMessage, ExtensionContextInvalidatedError } from '../lib/messaging'
 import { showPrintModal, type PrintSummary } from './PrintModal'
 
 let modalOpen = false
 
-async function intercept(): Promise<void> {
+async function intercept(onReview: () => void): Promise<void> {
   if (modalOpen) return
   modalOpen = true
   try {
     const summary = await sendMessage<PrintSummary>({ type: 'GET_PRINT_SUMMARY' })
     const result = await showPrintModal(summary)
     if (result === 'print') {
-      // User insists — hand off to the real print dialog.
+      // User insists: hand off to the real print dialog.
       window.print()
     } else if (result === 'review') {
-      await sendMessage({ type: 'OPEN_PANEL' })
+      onReview()
     }
     // 'cancel' simply returns to editing.
   } catch (err) {
@@ -32,7 +32,7 @@ async function intercept(): Promise<void> {
   }
 }
 
-export function installPrintIntercept(): void {
+export function installPrintIntercept({ onReview }: { onReview: () => void }): void {
   // Capture the keyboard shortcut before Docs/Chrome handles it.
   window.addEventListener(
     'keydown',
@@ -41,7 +41,7 @@ export function installPrintIntercept(): void {
       if (isPrint) {
         e.preventDefault()
         e.stopPropagation()
-        void intercept()
+        void intercept(onReview)
       }
     },
     true,
@@ -49,6 +49,6 @@ export function installPrintIntercept(): void {
 
   // Fallback: if a print is triggered another way, still surface the modal.
   window.addEventListener('beforeprint', () => {
-    void intercept()
+    void intercept(onReview)
   })
 }

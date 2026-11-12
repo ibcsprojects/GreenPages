@@ -1,62 +1,67 @@
-# 🌿 GreenPages
+# GreenPages
 
-**Like Grammarly, but for paper & ink.** A Chrome extension (Manifest V3) that works
-inside Google Docs, detects wasteful print formatting, and suggests eco-friendly fixes
-you accept **one at a time** from a side panel — plus a print-intercept that double-checks
-you before any wasteful print job.
+A Chrome extension that finds print waste in Google Docs and fixes it. It sits in the corner
+of the editor, the way a spell checker does, lists what will cost you paper or ink, and
+applies the fixes you accept. It runs entirely in your browser: no server, no AI, no account
+with us.
 
-> Works **100% offline out of the box** against a bundled demo document and a
-> deterministic rules engine. No accounts, no keys. The Google Docs API and Gemini are an
-> optional upgrade (see [`docs/SETUP.md`](docs/SETUP.md)).
+**Website:** <https://ibcsprojects.github.io/GreenPages/> (homepage, privacy policy, and a
+PDF check that works with files from any app).
 
-## What it flags
+## What it catches
 
-| Flag | Waste | Eco fix |
-|------|-------|---------|
-| 🖍️ Highlighted text | Ink-heavy fills | Switch to underline |
-| 🔠 Oversized body font | Extra pages | Shrink to body size |
-| ↕️ Stacked blank lines | Padding pages | Collapse to one |
-| ⤓ Hard page break | Half-blank sheet | Slim dashed divider |
-| ☰ Sprawling short bullets | One line each | Compact table |
-| ✂️ Wordy paragraphs | Extra lines | AI-condensed text (editable) |
+| Issue | Fix |
+|-------|-----|
+| Highlighted text | Underline instead of an ink-heavy fill |
+| Oversized body text | Back to body size |
+| Wide margins | Default margins, where that saves paper |
+| Stacked blank lines, trailing blank pages | Collapsed |
+| Hard page breaks | A thin divider |
+| Long lists of short bullets | A compact table |
+| Oversized images | Scaled down |
+| Wordy paragraphs | Plain-language rewrite, with every change listed |
+| Wide paragraph indents | Pulled back to the margin |
 
-## Quick start
+Press Ctrl+P or Cmd+P in a document and GreenPages shows the page count and anything
+unfixed before the print dialog opens.
+
+## Install
+
+GreenPages isn't in the Chrome Web Store yet. To try it now:
 
 ```bash
 npm install
-npm run build          # type-checks + bundles to dist/
+npm run build
 ```
 
-Then load it in Chrome:
+1. Open `chrome://extensions` and turn on **Developer mode**.
+2. Click **Load unpacked** and choose the `dist/` folder.
+3. Open any Google Doc. The GreenPages button appears in the bottom-right corner of the
+   editor. Click it, then **Connect to Google Docs** (Google asks once).
+4. Click the toolbar icon anywhere else to open a demo document with no sign-in.
 
-1. Go to `chrome://extensions`, enable **Developer mode**.
-2. **Load unpacked** → select the `dist/` folder.
-3. Open any Google Doc. Click the **🌿 GreenPages** pill (bottom-right) or the toolbar
-   icon to open the side panel.
-4. Review flag cards → **Apply** or **Dismiss** each. The eco-score and "pages saved"
-   update live.
-5. Press **Ctrl/Cmd+P** in the doc → the **print-intercept modal** shows the page
-   estimate, unresolved flags, and double-sided / paper-size / location reminders.
+While the Google app is unverified, only accounts added as test users in the Google Cloud
+project can connect. See [docs/SETUP.md](docs/SETUP.md).
 
-## Scripts
+## Privacy
+
+GreenPages uses one Google permission, `documents`, to read the document you have open
+and apply the fixes you accept. Nothing is sent to us or to any AI service. Full policy:
+[site/privacy.html](site/privacy.html).
+
+## Develop
 
 | Command | Does |
 |---------|------|
-| `npm run dev` | Vite dev server (HMR for the side panel) |
-| `npm run build` | Type-check + production bundle to `dist/` |
-| `npm test` | Vitest — the rules engine + edit backend |
+| `npm run build` | Typecheck and build the extension into `dist/` |
+| `npm test` | Unit tests (rules engine, rewriter, page estimate, edit backends) |
+| `npm run typecheck` | TypeScript only |
+| `npm run site:vendor` | Copy pdf.js into `site/` so the PDF check works locally |
 
-## How it's wired
+CI runs the typecheck, tests and build on every pull request. How the pieces fit:
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Launch status and remaining manual steps:
+[docs/LAUNCH.md](docs/LAUNCH.md).
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Short version: the side panel and a
-service worker hold the document model and flags; an `EditBackend` interface applies each
-accepted fix. Today that's an in-memory `MockDocsBackend`; swapping in `GoogleDocsBackend`
-(maps edits to Docs API `batchUpdate`) takes the product live with no UI changes.
+## Licence
 
-### A note on inline underlines
-
-Google Docs renders text onto `<canvas>`, so a third-party extension can't get per-word
-**screen coordinates** — which is why true Grammarly-style inline underlines aren't
-reliable there (and why Grammarly's own Docs support is special-cased). GreenPages instead
-uses the **side-panel** model: it reads the document via the Docs API (character ranges,
-not pixels), which is all it needs to analyze and to apply fixes.
+[MIT](LICENSE)

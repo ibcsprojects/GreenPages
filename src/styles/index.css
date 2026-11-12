@@ -1,3 +1,5 @@
+/* Styles for extension pages (the demo page). The overlay has its own copy, scoped to its
+   Shadow DOM: see src/overlay/overlay.css. */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -14,17 +16,5 @@ body,
 }
 
 body {
-  @apply bg-leaf-50 text-bark-900 font-sans antialiased;
-}
-
-/* thin scrollbars in the side panel */
-*::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-*::-webkit-scrollbar-thumb {
-  @apply bg-leaf-200 rounded-full;
-}
-*::-webkit-scrollbar-thumb:hover {
-  @apply bg-leaf-400;
+  @apply bg-[#eef1ec] font-sans text-bark-900 antialiased;
 }
