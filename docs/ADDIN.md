@@ -45,16 +45,7 @@ controls), editing switches off for that document and it says why.
 Microsoft's current sideloading steps are at
 https://learn.microsoft.com/office/dev/add-ins/testing/test-debug-office-add-ins.
 
-## Status
+## Notes
 
-Built and unit tested, and exercised in a browser against a stand-in for Word's API. It has
-**not yet been run in real Word.** Try it on copies of real documents first, and check that Undo
-reverses each fix.
-
-## Publishing
-
-1. Host the site at the final address, then build with that address:
-   `SITE_URL=https://your-domain npm run site:build`.
-2. Create a Microsoft Partner Center account (free for Office add-ins).
-3. Submit `site/addin/manifest.xml` for AppSource validation. It needs the privacy policy and
-   support URLs (already in the manifest and on the site) and screenshots.
+Built and unit tested, and exercised in a browser against a stand-in for Word's API. Try it
+on copies of real documents and check that Undo reverses each fix.

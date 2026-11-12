@@ -65,8 +65,7 @@ and apply the fixes you accept. Nothing is sent to us or to any AI service. Full
 | `npm run site:vendor` | Copy pdf.js into `site/` so the PDF check works locally |
 
 CI runs the typecheck, tests and build on every pull request. How the pieces fit:
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Launch status and remaining manual steps:
-[docs/LAUNCH.md](docs/LAUNCH.md).
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Licence
 
