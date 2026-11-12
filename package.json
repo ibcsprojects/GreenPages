@@ -13,9 +13,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "site:vendor": "node scripts/vendor-pdfjs.mjs",
-    "notices": "node scripts/notices.mjs"
+    "notices": "node scripts/notices.mjs",
+    "site:build": "vite build --config vite.site.config.ts"
   },
   "dependencies": {
+    "fflate": "^0.8.3",
     "framer-motion": "^14.10.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -28,8 +30,9 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
+    "@xmldom/xmldom": "^0.9.12",
     "autoprefixer": "^10.4.20",
-    "pdfjs-dist": "^5.6.205",
+    "pdfjs-dist": "5.5.207",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.15",
     "typescript": "^5.6.3",

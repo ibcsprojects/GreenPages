@@ -1,0 +1,84 @@
+.fx-summary {
+  margin-top: 8px;
+}
+.fx-pages {
+  margin: 0 0 14px;
+  color: var(--ink-soft);
+}
+.fx-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.fx-actions .btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.fx-note {
+  margin: 14px 0 0;
+  font-size: 14px;
+  color: var(--ink-faint);
+}
+.fx-clean {
+  margin: 24px 0 0;
+  font-weight: 600;
+  color: var(--accent-strong);
+}
+.fx-list {
+  list-style: none;
+  margin: 24px 0 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+.fx-flag {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--line);
+}
+.fx-flag h3 {
+  margin: 0 0 4px;
+  font-size: 17px;
+}
+.fx-why {
+  margin: 0;
+  color: var(--ink-soft);
+  max-width: 70ch;
+}
+.fx-diff {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0 0;
+  font-size: 14px;
+}
+.fx-before {
+  color: var(--ink-faint);
+  text-decoration: line-through;
+}
+.fx-after {
+  color: var(--accent-strong);
+}
+.fx-foot {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 12px;
+}
+.fx-saves {
+  font-size: 14px;
+  color: var(--ink-faint);
+}
+.fx-foot .btn {
+  margin-left: auto;
+  padding: 8px 16px;
+}
+.fx-help {
+  margin-top: 48px;
+  max-width: 70ch;
+}
+.fx-help h2 {
+  font-size: 21px;
+  margin: 0 0 8px;
+}
+.fx-help li {
+  color: var(--ink-soft);
+  margin-bottom: 8px;
+}

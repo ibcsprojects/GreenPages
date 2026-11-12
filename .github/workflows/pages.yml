@@ -1,12 +1,12 @@
 name: Website
 
-# Publishes site/ (homepage, privacy policy, PDF check) to GitHub Pages.
+# Publishes site/ (homepage, guides, privacy policy, PDF check, Word file tool) to GitHub Pages.
 # One-time setup: repo Settings > Pages > Source: "GitHub Actions".
 
 on:
   push:
     branches: [main]
-    paths: ['site/**', 'scripts/vendor-pdfjs.mjs', '.github/workflows/pages.yml']
+    paths: ['site/**', 'src/**', 'scripts/vendor-pdfjs.mjs', 'vite.site.config.ts', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -33,6 +33,8 @@ jobs:
       - run: npm ci
       - name: Copy pdf.js into the site
         run: npm run site:vendor
+      - name: Build the Word file tool
+        run: npm run site:build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
