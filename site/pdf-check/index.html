@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PDF check: GreenPages</title>
+    <meta
+      name="description"
+      content="Find blank and ink-heavy pages in any PDF before you print, and see how many sheets each print setting uses. Runs in your browser."
+    />
+    <link rel="icon" href="../assets/icon.png" />
+    <link rel="stylesheet" href="../styles.css" />
+    <link rel="stylesheet" href="pdf-check.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap">
+        <a class="brand" href="../"><img src="../assets/icon.png" alt="" />GreenPages</a>
+        <nav aria-label="Site">
+          <a href="./" aria-current="page">PDF check</a>
+          <a href="../privacy.html">Privacy</a>
+          <a href="https://github.com/ibcsprojects/GreenPages">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <section class="pc-intro">
+        <h1>Check a PDF before you print</h1>
+        <p>
+          Save any document as a PDF and drop it here. GreenPages finds blank pages and pages that
+          use a lot of ink, and shows how many sheets each print setting takes. The file stays on
+          your computer. <span class="pc-tag">Experimental</span>
+        </p>
+      </section>
+
+      <label class="pc-drop" id="drop">
+        <input type="file" id="file" accept="application/pdf,.pdf" />
+        <span class="pc-drop-main">Choose a PDF or drop it here</span>
+        <span class="pc-drop-sub">Nothing is uploaded</span>
+      </label>
+
+      <p class="pc-status" id="status" role="status" aria-live="polite"></p>
+
+      <section id="results" hidden>
+        <div class="pc-summary" id="summary"></div>
+        <h2 class="pc-h2">Pages</h2>
+        <ol class="pc-grid" id="grid"></ol>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap">
+        <span>GreenPages, MIT licence</span>
+        <a href="../">Home</a>
+        <a href="../privacy.html">Privacy policy</a>
+      </div>
+    </footer>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

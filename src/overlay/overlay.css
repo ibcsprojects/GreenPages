@@ -1,0 +1,11 @@
+/* Styles for the overlay. Imported as a string (?inline) and injected into the overlay's
+   Shadow DOM, so they never touch the host page and the page never touches them. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Stop the host page's inherited text styles (font, colour, line-height, letter-spacing)
+   from leaking into the shadow tree. */
+:host {
+  all: initial;
+}

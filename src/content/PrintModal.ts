@@ -6,6 +6,8 @@ import type { Settings } from '../lib/messaging'
 
 export interface PrintSummary {
   pages: number
+  /** True when `pages` came from Docs' own PDF export; false when it's our estimate. */
+  pagesExact: boolean
   unresolved: { type: string; title: string }[]
   settings: Settings
 }
@@ -68,7 +70,7 @@ export function showPrintModal(summary: PrintSummary): Promise<PrintModalResult>
           <p>A quick eco check so you don’t waste paper or ink.</p>
         </div>
         <div class="body">
-          <div class="stat"><b>${summary.pages}</b><span>estimated page${summary.pages === 1 ? '' : 's'}</span></div>
+          <div class="stat"><b>${summary.pages}</b><span>${summary.pagesExact ? '' : 'estimated '}page${summary.pages === 1 ? '' : 's'}</span></div>
           ${heavy ? `<div class="warn">This is a large print job. Are you sure you need every page on paper?</div>` : ''}
           ${
             summary.unresolved.length
@@ -79,7 +81,7 @@ export function showPrintModal(summary: PrintSummary): Promise<PrintModalResult>
         </div>
         <div class="foot">
           <button class="danger" data-act="print">Print anyway</button>
-          <button class="ghost" data-act="review">Review flags</button>
+          <button class="ghost" data-act="review">Review issues</button>
           <button class="primary" data-act="cancel">Keep editing</button>
         </div>
       </div>`
