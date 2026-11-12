@@ -71,6 +71,11 @@ CI runs the typecheck, tests and build on every pull request. How the pieces fit
 
 [MIT](LICENSE)
 
+## Security and support
+
+Report security problems privately to security@sparepage.app (see [SECURITY.md](SECURITY.md)). For
+anything else, email support@sparepage.app or open an issue.
+
 ## Credits
 
 Created by Manav Purswani and Cata Gamero.
