@@ -1,7 +1,7 @@
 // Renders the list of issue cards shared by the Word file page and the Word add-in. Text from
 // the document is only ever written with textContent, never as HTML.
 
-import type { Flag } from '../lib/analyzer/types'
+import type { Flag, FlagType } from '../lib/analyzer/types'
 
 export interface CardOptions {
   onApply: (flag: Flag) => void
@@ -9,6 +9,15 @@ export interface CardOptions {
   unsupported?: (flag: Flag) => string | null
   /** Jump to the issue in the document (the add-in). */
   onShow?: (flag: Flag) => void
+  /** Show the card with no buttons (the examples on the homepage). */
+  readonly?: boolean
+}
+
+/** What a flag saves, for the coloured dot on its card: ink, paper, or words. */
+function kindOf(type: FlagType): 'ink' | 'paper' | 'words' {
+  if (type === 'highlight') return 'ink'
+  if (type === 'verbose') return 'words'
+  return 'paper'
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string): HTMLElementTagNameMap[K] {
@@ -24,6 +33,7 @@ export function renderFlagCards(flags: Flag[], o: CardOptions): HTMLUListElement
   const list = el('ul', 'fx-list')
   for (const f of flags) {
     const li = el('li', 'fx-flag')
+    li.dataset.kind = kindOf(f.type)
     li.append(el('h3', undefined, f.title))
     li.append(el('p', 'fx-why', f.explanation))
     if (f.before || f.after) {
@@ -32,25 +42,28 @@ export function renderFlagCards(flags: Flag[], o: CardOptions): HTMLUListElement
       if (f.after) diff.append(el('span', 'fx-after', clip(f.after)))
       li.append(diff)
     }
+    if (f.reviewFirst) {
+      li.append(el('p', 'fx-unsupported', 'This one leaves out whole sentences, so it is not part of Apply all. Read it, then apply it if you agree.'))
+    }
     const why = o.unsupported?.(f) ?? null
     if (why) li.append(el('p', 'fx-unsupported', why))
     const foot = el('div', 'fx-foot')
     if (f.impact.paper >= 0.05) foot.append(el('span', 'fx-saves', `Saves about ${f.impact.paper.toFixed(1)} of a page`))
     const buttons = el('span', 'fx-buttons')
-    if (o.onShow) {
+    if (o.onShow && !o.readonly) {
       const show = el('button', 'btn btn-quiet', 'Show')
       show.type = 'button'
       show.addEventListener('click', () => o.onShow!(f))
       buttons.append(show)
     }
-    if (!why) {
+    if (!why && !o.readonly) {
       const apply = el('button', 'btn btn-quiet', 'Apply')
       apply.type = 'button'
       apply.addEventListener('click', () => o.onApply(f))
       buttons.append(apply)
     }
-    foot.append(buttons)
-    li.append(foot)
+    if (!o.readonly) foot.append(buttons)
+    if (foot.childNodes.length > 0) li.append(foot)
     list.append(li)
   }
   return list

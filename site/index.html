@@ -34,39 +34,58 @@
     </header>
 
     <main>
-      <div class="hero-band"><div class="wrap">
-        <section class="hero" aria-labelledby="hero-title">
-          <div>
-            <h1 id="hero-title">Print fewer pages from Google Docs.</h1>
-            <p class="lede">
-              SparePage finds the formatting that wastes paper and ink, then fixes it in one
-              click. It runs in your browser.
-            </p>
-            <div class="actions">
-              <a class="btn btn-primary" href="install.html">Install for Chrome</a>
-              <a class="btn btn-quiet" href="guide.html">Do it by hand instead</a>
-            </div>
-            <p class="fine">Free and open source. No account with us, no AI, no tracking.</p>
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="wrap">
+          <h1 id="hero-title">Print fewer pages from Google Docs.</h1>
+          <p class="lede">
+            SparePage cuts wordy text and fixes the formatting that wastes paper and ink, in one
+            click. Try it on your own writing below.
+          </p>
+          <div class="actions">
+            <a class="btn btn-primary" href="install.html">Install for Chrome</a>
+            <a class="btn btn-quiet" href="docx-fix/">Fix a Word file</a>
           </div>
-          <figure>
-            <img
-              src="assets/overlay.png"
-              width="1400"
-              height="930"
-              alt="The SparePage panel open over a Google Doc, listing eight print issues such as wide margins, an oversized image and highlighted text, with an Apply all button."
-            />
-            <figcaption>The panel sits in the corner of the editor, like a spell checker.</figcaption>
-          </figure>
-        </section>
-      </div></div>
+          <p class="fine">Free and open source. No account with us, no AI, no tracking.</p>
+
+          <div class="try" id="try">
+            <div class="try-editor">
+              <div class="try-head"><span>Your text</span><span id="try-words">0 words</span></div>
+              <label class="sr-only" for="try-input">Text to shorten</label>
+              <textarea id="try-input" spellcheck="false" placeholder="Enter or paste your text here to check it..."></textarea>
+              <div class="try-actions">
+                <button type="button" class="btn btn-primary" id="try-example">Insert example text</button>
+                <a class="btn btn-quiet" href="docx-fix/">Check a Word document</a>
+              </div>
+            </div>
+            <div class="try-results" aria-live="polite">
+              <div class="try-head"><span>Shorter version</span></div>
+              <div id="try-output">
+                <noscript><p class="try-empty">Turn on JavaScript to try the text checker.</p></noscript>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="trust" aria-label="What to expect">
+        <ul>
+          <li><b>Free</b> to use</li>
+          <li><b>No account</b> with us</li>
+          <li><b>No AI</b>, no tracking</li>
+          <li><b>Open source</b> under MIT</li>
+          <li><b>No server</b> receives your files</li>
+        </ul>
+      </section>
 
       <section class="section" aria-labelledby="tools-title">
         <div class="wrap">
-          <h2 id="tools-title">Fix print waste where you write</h2>
-          <p>
-            Pick the app you use. Each tool finds the same kinds of waste, and none of them sends
-            your document to us.
-          </p>
+          <div class="block-head">
+            <h2 id="tools-title">Fix print waste where you write</h2>
+            <p>
+              Pick the app you use. Each tool finds the same kinds of waste, and none of them sends
+              your document to us.
+            </p>
+          </div>
           <div class="tools">
             <article class="tool tool-main">
               <h3>Google Docs</h3>
@@ -96,62 +115,86 @@
         </div>
       </section>
 
-      <section class="trust" aria-label="What to expect">
-        <ul>
-          <li><b>Free</b> to use</li>
-          <li><b>No account</b> with us</li>
-          <li><b>No AI</b>, no tracking</li>
-          <li><b>Open source</b> under MIT</li>
-          <li><b>No server</b> receives your files</li>
-        </ul>
-      </section>
-
-      <section class="section" aria-labelledby="catches-title">
-        <div class="wrap">
-          <h2 id="catches-title">What it catches</h2>
-          <p>
-            Each issue comes with the fix, how much paper it saves, and a button to apply it. You
-            accept fixes one at a time or all at once.
-          </p>
-          <ul class="catches">
-            <li><b>Highlighted text</b><span>Swaps ink-heavy highlight fills for an underline.</span></li>
-            <li><b>Oversized body text</b><span>Brings 16pt and 18pt paragraphs back to body size.</span></li>
-            <li><b>Wide margins</b><span>Resets margins wider than the default, where it saves paper.</span></li>
-            <li><b>Stacked blank lines</b><span>Collapses runs of empty lines and trailing blank pages.</span></li>
-            <li><b>Hard page breaks</b><span>Replaces a half-empty page with a thin divider.</span></li>
-            <li><b>Long lists of short bullets</b><span>Turns them into a compact table.</span></li>
-            <li><b>Oversized images</b><span>Scales pictures that fill most of a page.</span></li>
-            <li><b>Wordy paragraphs</b><span>Rewrites padded phrases, and shows every change it made.</span></li>
-          </ul>
+      <section class="section band" aria-labelledby="spot-title">
+        <div class="wrap spot">
+          <div>
+            <h2 id="spot-title">A spell checker for print waste</h2>
+            <p>
+              A small button sits in the corner of your document with the number of issues found.
+              Open it, and every issue comes with the fix and what it saves.
+            </p>
+            <ol class="mini-steps">
+              <li><b>Review the list.</b> <b>Show</b> jumps to the spot in your document.</li>
+              <li><b>Apply what you agree with</b>, one at a time or all at once. Your document changes only when you click Apply.</li>
+              <li><b>Press Ctrl+P.</b> SparePage shows the page count and what is left to fix before the print dialog opens.</li>
+            </ol>
+            <div class="actions">
+              <a class="btn btn-primary" href="install.html">Install for Chrome</a>
+              <a class="btn btn-quiet" href="guide.html">Do it by hand instead</a>
+            </div>
+          </div>
+          <div class="panel" role="group" aria-label="Example of the SparePage panel on a sample document">
+            <div class="panel-head">
+              <img src="assets/icon.png" alt="" />
+              <div><b>SparePage</b><span>Sample document &middot; <span data-issue-count>8 issues found</span></span></div>
+            </div>
+            <div class="panel-body" data-flag-types="highlight,fontSize,verbose"></div>
+          </div>
         </div>
       </section>
 
-      <section class="section" aria-labelledby="how-title">
-        <div class="wrap">
-          <h2 id="how-title">How it works</h2>
-          <ol class="steps">
-            <li>
-              <h3>Open a document</h3>
-              <p>
-                A small button appears in the corner of the editor with the number of issues
-                found. Click it and connect to Google once.
-              </p>
-            </li>
-            <li>
-              <h3>Review the list</h3>
-              <p>
-                Every issue says what is wrong and what the fix saves. <b>Show</b> jumps to the
-                spot in your document.
-              </p>
-            </li>
-            <li>
-              <h3>Apply, then print</h3>
-              <p>
-                Fix issues one by one or all together. Your document changes only when you click
-                Apply, and Google keeps its version history.
-              </p>
-            </li>
-          </ol>
+      <section class="section feature" aria-labelledby="f1">
+        <div class="wrap feature-grid">
+          <div class="feature-text">
+            <h2 id="f1">Swap ink-heavy highlights for an underline</h2>
+            <p>A background highlight floods the page with ink when it prints. SparePage finds each one and offers an underline instead, which keeps the emphasis and uses a fraction of the ink.</p>
+          </div>
+          <div class="feature-visual" data-flag-types="highlight"></div>
+        </div>
+      </section>
+      <section class="section feature band reverse" aria-labelledby="f2">
+        <div class="wrap feature-grid">
+          <div class="feature-text">
+            <h2 id="f2">Bring oversized text back to size</h2>
+            <p>Body text set at 16 or 18 points pushes the rest of the document onto extra pages. SparePage shows which paragraphs are bigger than the rest and resets them in one click.</p>
+          </div>
+          <div class="feature-visual" data-flag-types="fontSize"></div>
+        </div>
+      </section>
+      <section class="section feature" aria-labelledby="f3">
+        <div class="wrap feature-grid">
+          <div class="feature-text">
+            <h2 id="f3">Clear out blank lines and empty pages</h2>
+            <p>Stacks of empty lines and trailing blank pages add sheets without adding words. SparePage collapses them, and swaps a half-empty page break for a thin divider.</p>
+          </div>
+          <div class="feature-visual" data-flag-types="doubleSpacing"></div>
+        </div>
+      </section>
+      <section class="section feature band reverse" aria-labelledby="f4">
+        <div class="wrap feature-grid">
+          <div class="feature-text">
+            <h2 id="f4">Turn long lists into a compact table</h2>
+            <p>A run of short bullets can fill a page on its own. SparePage rebuilds it as a table that says the same thing in a fraction of the space.</p>
+          </div>
+          <div class="feature-visual" data-flag-types="bulletSprawl"></div>
+        </div>
+      </section>
+      <section class="section feature" aria-labelledby="f5">
+        <div class="wrap feature-grid">
+          <div class="feature-text">
+            <h2 id="f5">Cut wordy paragraphs down</h2>
+            <p>It finds padded phrases like &ldquo;in order to&rdquo;, filler words, repeated sentences and very long paragraphs, then writes a shorter version you can edit before you apply it. Every change is listed, and nothing is sent to an AI service.</p>
+          </div>
+          <div class="feature-visual" data-flag-types="verbose"></div>
+        </div>
+      </section>
+      <section class="section feature band reverse" aria-labelledby="f6">
+        <div class="wrap feature-grid">
+          <div class="feature-text">
+            <h2 id="f6">Shrink pictures that fill the page</h2>
+            <p>A picture that covers most of a page is heavy on ink and often pushes text onto the next sheet. SparePage scales it down to a sensible size and keeps it in place.</p>
+          </div>
+          <div class="feature-visual" data-flag-types="largeImage"></div>
         </div>
       </section>
 
@@ -194,13 +237,13 @@
         </div>
       </section>
 
-      <section class="section" aria-labelledby="private-title">
+      <section class="section band" aria-labelledby="private-title">
         <div class="wrap split">
           <div>
             <h2 id="private-title">Your document stays with you</h2>
             <p>
-              SparePage has no server. It reads the document you have open through Google's Docs
-              API, checks it inside your browser, and writes back only the fixes you accept.
+              SparePage has no server. It reads the document you have open through Google&rsquo;s
+              Docs API, checks it inside your browser, and writes back only the fixes you accept.
             </p>
             <p>
               Wordy paragraphs are shortened by a library of plain-language rules, the way spell
@@ -218,21 +261,9 @@
         </div>
       </section>
 
-      <section class="section" aria-labelledby="print-title">
-        <div class="wrap">
-          <h2 id="print-title">A check before you print</h2>
-          <p>
-            Press Ctrl+P or Cmd+P in a document that still has issues and SparePage shows the
-            page count, what is left to fix, and a reminder to print double-sided. If the
-            document is already clean, it stays out of your way and the normal print dialog
-            opens.
-          </p>
-        </div>
-      </section>
-
       <section class="section" id="faq" aria-labelledby="faq-title">
         <div class="wrap">
-          <h2 id="faq-title">Questions</h2>
+          <div class="block-head"><h2 id="faq-title">Frequently asked questions</h2></div>
           <div class="faq">
             <details>
               <summary>Who can use it right now?</summary>
@@ -246,22 +277,31 @@
               <summary>Does it change my document without asking?</summary>
               <p>
                 No. It only reads your document until you click Apply or Apply all. Each change
-                appears in Google's version history (File, then Version history), so you can
+                appears in Google&rsquo;s version history (File, then Version history), so you can
                 restore an earlier copy.
+              </p>
+            </details>
+            <details>
+              <summary>Will it delete my sentences?</summary>
+              <p>
+                Not on its own. Padded phrases and filler words are swapped or removed, and every
+                change is listed. For a very long paragraph it can also suggest leaving out the
+                least important sentences. That suggestion is marked for review, you can edit it
+                first, and it is never part of Apply all.
               </p>
             </details>
             <details>
               <summary>Does it use AI?</summary>
               <p>
                 No. Wordy paragraphs are shortened with a fixed library of plain-language
-                replacements, and the panel lists every change so you can check it. Nothing is
-                sent to an AI service.
+                replacements and simple sentence rules, and the panel lists every change so you can
+                check it. Nothing is sent to an AI service.
               </p>
             </details>
             <details>
               <summary>Is the page count exact?</summary>
               <p>
-                It uses Google's own PDF export, so it matches what prints. If that is not
+                It uses Google&rsquo;s own PDF export, so it matches what prints. If that is not
                 available for a document, SparePage shows an estimate and labels it
                 &ldquo;estimate&rdquo;.
               </p>
@@ -287,7 +327,7 @@
         </div>
       </section>
 
-      <section class="section" aria-labelledby="cta-title">
+      <section class="section band" aria-labelledby="cta-title">
         <div class="wrap">
           <div class="cta">
             <h2 id="cta-title">Try it on your next print.</h2>
@@ -342,5 +382,6 @@
     </footer>
 
     <script src="calculator.js"></script>
+    <script src="home.js"></script>
   </body>
 </html>
