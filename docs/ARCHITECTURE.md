@@ -1,76 +1,87 @@
 # Architecture
 
 ```
-                ┌────────────────────────────────────────────────┐
-                │            Service worker (state owner)         │
-                │  DocModel · Flag[] · dismissed · Settings       │
-                │  analyze() ── EditBackend.apply() ── pageEst    │
-                └───────▲───────────────────────────▲────────────┘
-                        │ chrome.runtime messages    │
-        ┌───────────────┴──────────┐      ┌──────────┴───────────────┐
-        │   Side panel (React)     │      │  Content script (Docs)    │
-        │  Mode 3 list of Flag     │      │  • print intercept (L2)   │
-        │  cards · Apply/Dismiss   │      │  • floating GreenPages pill│
-        └──────────────────────────┘      └───────────────────────────┘
+                 ┌──────────────────────────────────────────────────┐
+                 │          Service worker (state owner)            │
+                 │  one session per document: DocModel · Flag[] ·   │
+                 │  dismissed · page count · settings               │
+                 │  analyzeDoc() → EditBackend.apply() → pages      │
+                 └──────▲───────────────────────────────▲───────────┘
+                        │ chrome.runtime messages        │ Docs API (OAuth, `documents`)
+                        │                                │ Docs PDF export (page count)
+        ┌───────────────┴──────────────┐        ┌────────┴─────────┐
+        │ Content script (Google Docs) │        │  Google          │
+        │  • overlay (Shadow DOM)      │        └──────────────────┘
+        │  • print intercept           │
+        │  • reveal via Docs' Find     │   Demo page (extension page): the same
+        └──────────────────────────────┘   overlay over the bundled sample doc
 ```
+
+There is no backend. Everything runs in the user's browser, and the only network calls go
+to Google: the Docs API (read the open document, apply accepted edits) and Docs' own PDF
+export (exact page count).
 
 ## Components
 
-- **`src/background/service-worker.ts`** — single source of truth. Owns the active
-  `DocModel`, current `Flag[]`, dismissed ids, and `Settings`. Handles every message
-  (`GET_STATE`, `REANALYZE`, `APPLY_FLAG`, `DISMISS_FLAG`, `UPDATE_SETTINGS`,
-  `GET_PRINT_SUMMARY`, `OPEN_PANEL`). Applying a flag runs the `EditBackend` then
-  re-analyzes so flags stay consistent.
+- **`src/background/service-worker.ts`** owns state. It keeps a session per document,
+  keyed by the Google Doc id in the sender's tab URL (or `sample` for the demo page), so
+  several open documents never mix. It handles `GET_STATE`, `REANALYZE`, `APPLY_FLAG`,
+  `APPLY_ALL`, `DISMISS_FLAG`, `REVEAL_FLAG`, `UPDATE_SETTINGS` and `GET_PRINT_SUMMARY`.
+  Google's sign-in window is only allowed on `GET_STATE { connect: true }`, which is sent
+  when the user clicks **Connect**; a page load checks access silently.
 
-- **`src/sidepanel/`** — React + Tailwind + zustand. `store.ts` mirrors worker state over
-  messages; components are presentational. `FlagCard.tsx` is the shared card (Mode 2/3):
-  chip, explanation, before→after, Apply / Dismiss, and an editable suggestion for
-  `verbose` flags.
+- **`src/overlay/`** is the UI: React, Tailwind, zustand and Framer Motion, mounted into a
+  Shadow DOM by `mount.tsx` so Docs' CSS can't reach it. `Overlay.tsx` holds the launcher
+  (pinned to the bottom-right corner of `.kix-appview-editor`) and the panel; `components/`
+  holds the score strip, issue cards and sort menu; `store.ts` mirrors worker state. The
+  Tailwind CSS is imported as a string (`overlay.css?inline`) and injected into the shadow
+  root.
 
-- **`src/content/`** — injected on `docs.google.com/document/*`. `printIntercept.ts`
-  captures Ctrl/Cmd+P (+ `beforeprint`) and shows `PrintModal.ts` (a Shadow-DOM modal, no
-  React, so it can't be styled by Docs). `content.ts` also mounts the launcher pill.
+- **`src/content/`** runs on `docs.google.com/document/*`. `content.ts` mounts the overlay
+  and implements "Show" by driving Docs' native Find bar (hidden), the only way to scroll
+  to and highlight text that Docs paints on a canvas. `printIntercept.ts` catches Ctrl/Cmd+P
+  and shows `PrintModal.ts`.
 
-- **`src/lib/`** — framework-free core, unit-tested:
-  - `docModel.ts` — paragraphs → styled text runs (mirrors the Docs API shape) +
-    `flatten` / `rebuildOffsets` / `cloneDoc` + the bundled `SAMPLE_DOC`.
-  - `analyzer/rules.ts` — the six detectors → `Flag[]`. `analyzer/condense.ts` — offline
-    text shortener. `analyzer/client.ts` — local-vs-Gemini switch.
-  - `docBackend.ts` — `EditBackend` interface; `MockDocsBackend` (in-memory, today) and
-    `GoogleDocsBackend` (maps each `EditAction` to a Docs API `batchUpdate` request).
-  - `pageEstimate.ts` — printed-page estimate (font size + blank lines inflate it).
-  - `messaging.ts` — the typed message protocol.
+- **`src/demo/`** is an extension page with a rendered sample document and the same
+  overlay. The toolbar icon opens it on any page that isn't a Google Doc.
 
-- **`api/`** — optional Vercel serverless functions (root convention). `api/analyze.ts`
-  (structural rules + Gemini-upgraded verbose suggestions) and `api/condense.ts`, with
-  shared helpers in **`server/lib/`** (`gemini.ts`, `prompt.ts`). Both fall back to the
-  offline path when `GEMINI_API_KEY` is absent.
+- **`src/lib/`** is the framework-free core, unit-tested:
+  - `docModel.ts`: paragraphs of styled runs (mirrors the Docs API), plus `SAMPLE_DOC`.
+  - `analyzer/rules.ts`: the detectors that produce `Flag[]`.
+  - `analyzer/condense.ts`: the offline rewriter. A library of plain-language rules (padded
+    phrases, doublets, filler openers) that shortens wordy paragraphs the way pre-LLM
+    writing tools did, and reports each change.
+  - `docBackend.ts`: `EditBackend`, with `MockDocsBackend` (demo) and `GoogleDocsBackend`
+    (Docs API `batchUpdate`).
+  - `googleDocs.ts`: OAuth, reading a doc into `DocModel`, writing edits, and the exact
+    page count from Docs' PDF export.
+  - `pageEstimate.ts`: a layout estimate in points (page size, margins, indents, line
+    spacing, heading spacing, images, table rows), used when the exact count isn't
+    available and labelled "estimate" in the UI.
+  - `messaging.ts`: the typed message protocol.
+
+- **`site/`** is the GitHub Pages website: homepage, privacy policy and the experimental
+  PDF check (pdf.js, all in the browser).
 
 ## Data flow for "Apply"
 
-1. User clicks **Apply** on a `FlagCard` → `store.apply(flagId, overrideText?)`.
-2. → `APPLY_FLAG` message → worker looks up the flag, takes its `EditAction`
-   (substituting edited text for `verbose` flags), calls `EditBackend.apply(doc, action)`.
-3. `MockDocsBackend` returns a new `DocModel` (offsets rebuilt); worker marks the flag
-   resolved and re-analyzes.
-4. Worker replies `STATE`; the panel re-renders with the card gone and the score updated.
+1. The user clicks **Apply** on a card: `store.apply(flagId, overrideText?)`.
+2. `APPLY_FLAG` reaches the worker, which finds the sender's session and flag, then calls
+   `EditBackend.apply(doc, action)`.
+3. `GoogleDocsBackend` sends `batchUpdate` and re-reads the document;
+   `MockDocsBackend` edits the sample in memory.
+4. The worker re-analyzes, refreshes the page count and replies with `STATE`.
 
-## The canvas constraint (why side-panel, not inline)
+## Page count
 
-Google Docs paints text on `<canvas>`. The DOM has no per-word geometry, so an extension
-cannot anchor an underline over a specific word reliably (it breaks on scroll/zoom and
-can't cover all text). The Docs API gives **character ranges**, not pixels — perfect for
-analysis and `batchUpdate` edits, which is exactly what the side-panel model needs.
-Inline canvas overlays (Mode 1) are intentionally out of scope; the `EditAction` seam is
-ready for them if Google ever exposes the geometry.
+The Docs API has no page count. The worker first tries Docs' own PDF export
+(`/document/d/<id>/export?format=pdf`, fetched with the user's existing Google session)
+and counts pages in the PDF. This needs no Drive scope. It is undocumented, so on any
+failure the worker falls back to `pageEstimate.ts`, and the UI says "estimate".
 
-## The upgrade seam
+## The canvas constraint
 
-Going live = three independent swaps, none of which touch the UI:
-
-1. **Read** the real doc → replace `SAMPLE_DOC` with a Docs API `documents.get` mapped to
-   `DocModel` (the shapes already align: paragraphs → text runs → `textStyle`).
-2. **Write** edits → swap `MockDocsBackend` for `GoogleDocsBackend` (request payloads are
-   already written in `buildRequests`; only OAuth + index translation remain).
-3. **AI** → on by default; build with `VITE_BACKEND_URL` set (baked into `DEFAULT_SETTINGS`)
-   and `analyzer/client.ts` routes to the Gemini-backed endpoints.
+Google Docs paints text on a `<canvas>`, so an extension can't place underlines under
+specific words reliably. The overlay therefore lists issues in a panel instead of drawing
+on the text, and **Show** uses Docs' Find to jump to each one. The Docs API gives
+character ranges, which is all analysis and editing need.

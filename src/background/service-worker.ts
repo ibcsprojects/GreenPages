@@ -1,248 +1,293 @@
-// The single source of truth. Holds the active DocModel, the current flags, dismissed
-// ids, and settings; serves them to the side panel and the content script. Applying a
-// fix runs through the EditBackend and re-analyzes so flags stay consistent.
+// The single source of truth. Keeps one session per document (keyed by the Google Doc id
+// in the sender's tab, or "sample" for the bundled demo page) holding its DocModel, flags,
+// dismissed ids and page count, and serves them to the in-editor overlay and the print
+// check. Applying a fix runs through the EditBackend and re-analyzes so flags stay
+// consistent. Nothing here talks to any server other than Google's own Docs endpoints.
 
-import { SAMPLE_DOC, flatten, type DocModel } from '../lib/docModel'
+import { SAMPLE_DOC, cloneDoc, flatten, type DocModel } from '../lib/docModel'
 import type { Flag } from '../lib/analyzer/types'
-import { analyze } from '../lib/analyzer/client'
+import { analyzeDoc } from '../lib/analyzer/rules'
 import { MockDocsBackend, GoogleDocsBackend, type EditBackend } from '../lib/docBackend'
 import { applyAllFixes } from '../lib/applyAll'
-import { getActiveGoogleDocId, fetchGoogleDoc, fetchDocPageCount } from '../lib/googleDocs'
-import { estimatePages, lineLocation } from '../lib/pageEstimate'
 import {
-  DEFAULT_SETTINGS,
-  onMessage,
-  type Msg,
-  type Settings,
-} from '../lib/messaging'
+  docIdFromUrl,
+  fetchGoogleDoc,
+  fetchExportPageCount,
+  hasDocsAccess,
+  setInteractiveAuth,
+} from '../lib/googleDocs'
+import { estimatePages, lineLocation } from '../lib/pageEstimate'
+import { DEFAULT_SETTINGS, onMessage, type Msg, type Settings } from '../lib/messaging'
 
-interface State {
-  doc: DocModel
+interface Session {
+  /** Google Doc id, or null for the offline sample. */
+  docId: string | null
+  doc: DocModel | null
+  backend: EditBackend
   flags: Flag[]
   dismissed: Set<string>
-  settings: Settings
-  /** Current page count: exact (live PDF export) when on a doc, else the heuristic. */
   pages: number
+  pagesExact: boolean
+  /** Fingerprint of the doc the page count was taken from. */
+  pagesSig: string
+  loaded: boolean
+  needsAccess: boolean
+  notice: string | null
 }
 
-// Defaults to the offline sample + in-memory backend. When the panel opens on a real
-// Google Doc, ensureDoc() swaps in the live document and the Docs API backend.
-let backend: EditBackend = new MockDocsBackend()
-let liveLoaded = false
-let liveDocId: string | null = null
-// Whether the current analysis reflects the user's live doc or the bundled sample, plus a
-// heads-up to show when we wanted the live doc but couldn't open it (so a failed sign-in /
-// OAuth mismatch / Docs error is visible instead of silently analyzing the sample).
-let docSource: 'live' | 'sample' = 'sample'
-let loadNotice: string | null = null
-// Set when the live page count fell back to the rough estimate (PDF export unavailable).
-let pagesNotice: string | null = null
-
-const state: State = {
-  doc: SAMPLE_DOC,
-  flags: [],
-  dismissed: new Set(),
-  settings: { ...DEFAULT_SETTINGS },
-  pages: 1,
-}
+const sessions = new Map<string, Session>()
+let settings: Settings = { ...DEFAULT_SETTINGS }
+let settingsLoaded = false
 
 async function loadSettings() {
+  if (settingsLoaded) return
   const saved = await chrome.storage.local.get('settings')
-  if (saved.settings) {
-    state.settings = { ...DEFAULT_SETTINGS, ...saved.settings }
-    // AI on/off and the backend URL are build-time concerns (baked from VITE_BACKEND_URL),
-    // not user toggles. Always take them from the current defaults so stale stored settings
-    // (e.g. an old useAI:false or empty backendUrl) can't silently disable AI after an update.
-    state.settings.useAI = DEFAULT_SETTINGS.useAI
-    state.settings.backendUrl = DEFAULT_SETTINGS.backendUrl
-  }
+  settings = { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) }
+  settingsLoaded = true
 }
 
-// One-shot: if the active tab is a Google Doc, load it via the Docs API (prompting for
-// OAuth the first time). Any failure (not a doc, auth declined, network) leaves the
-// offline sample in place so the product always works.
-async function ensureDoc() {
-  if (liveLoaded) return
-  const docId = await getActiveGoogleDocId()
-  if (!docId) {
-    // Not on a Google Doc tab — the sample is the intended experience, no warning.
-    docSource = 'sample'
-    loadNotice = null
+/**
+ * The session for whoever sent this message: their Google Doc, or the demo sample. Only
+ * the extension's own demo page gets the sample; any other page that isn't an open
+ * document (e.g. the Docs home page) gets nothing.
+ */
+function sessionFor(sender: chrome.runtime.MessageSender): Session {
+  const docId = docIdFromUrl(sender.tab?.url)
+  const isExtensionPage = (sender.url ?? '').startsWith(chrome.runtime.getURL(''))
+  if (!docId && !isExtensionPage) throw new Error('Open a Google Doc to use GreenPages.')
+  const key = docId ?? 'sample'
+  let s = sessions.get(key)
+  if (!s) {
+    s = {
+      docId,
+      doc: docId ? null : cloneDoc(SAMPLE_DOC),
+      backend: docId ? new GoogleDocsBackend(docId) : new MockDocsBackend(),
+      flags: [],
+      dismissed: new Set(),
+      pages: 1,
+      pagesExact: false,
+      pagesSig: '',
+      loaded: false,
+      needsAccess: false,
+      notice: null,
+    }
+    sessions.set(key, s)
+  }
+  return s
+}
+
+/**
+ * Load (or reload) a session's document. For a Google Doc this reads it through the Docs
+ * API. Google's sign-in window is only allowed when the user explicitly clicked to connect
+ * (`interactive`); on a plain page load we check silently and, without access, report
+ * `needsAccess` so the overlay can offer a Connect button instead of popping a window.
+ */
+async function load(s: Session, interactive: boolean): Promise<void> {
+  if (!s.docId) {
+    s.loaded = true
     return
   }
+  if (!interactive && !(await hasDocsAccess())) {
+    s.needsAccess = true
+    s.loaded = false
+    return
+  }
+  setInteractiveAuth(interactive)
   try {
-    state.doc = await fetchGoogleDoc(docId)
-    backend = new GoogleDocsBackend(docId)
-    liveLoaded = true
-    liveDocId = docId
-    docSource = 'live'
-    loadNotice = null
+    s.doc = await fetchGoogleDoc(s.docId)
+    s.loaded = true
+    s.needsAccess = false
+    s.notice = null
   } catch (err) {
-    // The tab IS a Google Doc but we couldn't open it (declined sign-in, an OAuth client
-    // that doesn't match this extension's id, a Docs API error). Stay on the sample so the
-    // product still works, but say so — otherwise "Apply" edits an in-memory sample and the
-    // user's real document never changes, which looks like a broken feature.
-    docSource = 'sample'
-    loadNotice = `Couldn't open your Google Doc — showing a sample instead. Edits won't reach your document. (${(err as Error)?.message ?? err})`
-    console.warn('[GreenPages] Docs API load failed, using sample doc:', err)
+    s.loaded = false
+    s.notice = explainLoadError(String((err as Error)?.message ?? err))
+    console.warn('[GreenPages] Docs API load failed:', err)
+  } finally {
+    setInteractiveAuth(false)
   }
 }
 
-async function reanalyze() {
-  await reanalyzeFlags()
-  await refreshPages()
+/** Turn Chrome / Google sign-in and Docs API errors into something a person can act on. */
+function explainLoadError(raw: string): string {
+  if (/bad client id|invalid_client|client id|OAuth2 not granted/i.test(raw)) {
+    return `Google sign-in isn't set up for this copy of GreenPages. Its extension ID is ${chrome.runtime.id}: register that ID on the Chrome extension OAuth client in Google Cloud, then click Connect again.`
+  }
+  if (/did not approve|denied|cancel|access_denied/i.test(raw)) {
+    return 'Sign-in didn\'t finish. If Google said this app is still being tested, your account must be added as a test user. Then click Connect again.'
+  }
+  if (/documents\.get 403/.test(raw)) {
+    return 'Google refused access to this document (403). Check that the Google Docs API is enabled for the project and that you can open this document.'
+  }
+  if (/documents\.get 404/.test(raw)) return 'Google couldn\'t find this document (404).'
+  return `Couldn't open this document: ${raw}`
 }
 
-// Re-detect flags only (no page export). Apply-all calls this between edits so it doesn't
-// pay for a PDF page count on every step — it refreshes pages once when the run finishes.
-async function reanalyzeFlags() {
-  const flags = await analyze(state.doc, {
-    useAI: state.settings.useAI,
-    backendUrl: state.settings.backendUrl,
-  })
-  state.flags = flags.filter((f) => !state.dismissed.has(f.id))
+/** Cheap fingerprint (djb2 over the serialised model) to tell whether a doc changed. */
+function docSignature(doc: DocModel): string {
+  const text = JSON.stringify(doc)
+  let h = 5381
+  for (let i = 0; i < text.length; i++) h = ((h << 5) + h + text.charCodeAt(i)) | 0
+  return `${text.length}:${h}`
 }
 
-// Exact page count from a live PDF export (matches what actually prints); falls back to the
-// heuristic for the offline sample or if the export fails. Runs after every (re)analysis so
-// the header and print modal reflect edits.
-async function refreshPages() {
-  if (liveLoaded && liveDocId) {
+function analyzeFlags(s: Session, doc: DocModel): Flag[] {
+  return analyzeDoc(doc).filter((f) => !s.dismissed.has(f.id))
+}
+
+async function reanalyze(s: Session) {
+  if (!s.doc) return
+  s.flags = analyzeFlags(s, s.doc)
+  await refreshPages(s)
+}
+
+// Exact page count from Docs' own PDF export when it works (it matches what prints);
+// otherwise our layout estimate, which the UI labels "estimate".
+async function refreshPages(s: Session) {
+  if (!s.doc) return
+  // The PDF export is the heavy call; skip it when nothing in the doc has changed.
+  const sig = docSignature(s.doc)
+  if (s.pagesExact && sig === s.pagesSig) return
+  s.pagesSig = sig
+  if (s.docId) {
     try {
-      state.pages = await fetchDocPageCount(liveDocId)
-      pagesNotice = null
+      s.pages = await fetchExportPageCount(s.docId)
+      s.pagesExact = true
       return
     } catch (err) {
-      // The heuristic is rough (it often undercounts), so don't let this fail silently —
-      // tell the user the number is an estimate and why the exact PDF count didn't work.
-      pagesNotice = `Page count is a rough estimate — couldn't get the exact count by exporting your doc to PDF. ${(err as Error)?.message ?? err}. Enable the Google Drive API for your OAuth project and grant Drive access.`
-      console.warn('[GreenPages] PDF page count failed, using estimate:', err)
+      console.info('[GreenPages] exact page count unavailable, using estimate:', err)
     }
-  } else {
-    pagesNotice = null
   }
-  state.pages = estimatePages(state.doc).pages
+  s.pages = estimatePages(s.doc).pages
+  s.pagesExact = false
 }
 
-function visibleFlags(): Flag[] {
-  return state.flags.filter((f) => !state.dismissed.has(f.id))
-}
-
-function stateMessage(): Msg {
+function stateMessage(s: Session): Msg {
   return {
     type: 'STATE',
-    doc: state.doc,
-    flags: visibleFlags(),
-    dismissed: [...state.dismissed],
-    settings: state.settings,
-    docSource,
-    pages: state.pages,
-    ...(loadNotice ? { notice: loadNotice } : {}),
-    ...(pagesNotice ? { pagesNotice } : {}),
+    doc: s.doc,
+    flags: s.flags.filter((f) => !s.dismissed.has(f.id)),
+    dismissed: [...s.dismissed],
+    settings,
+    docSource: s.docId ? 'live' : 'sample',
+    pages: s.pages,
+    pagesExact: s.pagesExact,
+    ...(s.needsAccess ? { needsAccess: true } : {}),
+    ...(s.notice ? { notice: s.notice } : {}),
   }
 }
 
-// Toolbar icon opens the side panel on the active tab.
-chrome.action.onClicked.addListener(async (tab) => {
-  if (tab.windowId != null) {
-    await chrome.sidePanel.open({ windowId: tab.windowId })
+async function ensureReady(s: Session, interactive = false) {
+  await loadSettings()
+  if (!s.loaded) {
+    await load(s, interactive)
+    if (s.loaded) await reanalyze(s)
   }
-})
+}
 
-// Allow the side panel to be opened from the action button.
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {})
+const DEMO_URL = () => chrome.runtime.getURL('src/demo/index.html')
+
+// Toolbar icon: on a Google Doc, open or close the in-editor overlay. Anywhere else, open
+// the demo document so the user can see what GreenPages does.
+chrome.action.onClicked.addListener(async (tab) => {
+  if (tab.id != null && docIdFromUrl(tab.url)) {
+    try {
+      await chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_OVERLAY' } satisfies Msg)
+    } catch {
+      // The tab was open before GreenPages was installed, so it has no content script.
+      await chrome.action.setBadgeText({ tabId: tab.id, text: '↻' })
+      await chrome.action.setTitle({ tabId: tab.id, title: 'Reload this tab to use GreenPages' })
+    }
+    return
+  }
+  await chrome.tabs.create({ url: DEMO_URL() })
 })
 
 onMessage(async (msg: Msg, sender) => {
   switch (msg.type) {
-    case 'GET_STATE':
-      if (state.flags.length === 0) {
-        await loadSettings()
-        await ensureDoc()
-        await reanalyze()
-      }
-      return stateMessage()
+    case 'GET_STATE': {
+      const s = sessionFor(sender)
+      await ensureReady(s, msg.connect === true)
+      return stateMessage(s)
+    }
 
-    case 'REANALYZE':
-      await ensureDoc()
-      state.dismissed.clear()
-      await reanalyze()
-      return stateMessage()
+    case 'REANALYZE': {
+      const s = sessionFor(sender)
+      await loadSettings()
+      // Re-read the live doc so edits made in Docs since the last scan are picked up.
+      if (s.docId) s.loaded = false
+      // The background rescan keeps the user's dismissals; "Scan again" starts fresh.
+      if (!msg.keepDismissed) s.dismissed.clear()
+      if (s.loaded) await reanalyze(s)
+      else await ensureReady(s)
+      return stateMessage(s)
+    }
 
     case 'APPLY_FLAG': {
-      const flag = state.flags.find((f) => f.id === msg.flagId)
-      if (flag) {
+      const s = sessionFor(sender)
+      const flag = s.flags.find((f) => f.id === msg.flagId)
+      if (flag && s.doc) {
         const action =
           msg.overrideText && flag.action.kind === 'replaceText'
             ? { ...flag.action, text: msg.overrideText }
             : flag.action
-        state.doc = await backend.apply(state.doc, action)
-        state.dismissed.add(flag.id)
-        await reanalyze()
+        s.doc = await s.backend.apply(s.doc, action)
+        await reanalyze(s)
       }
-      return stateMessage()
+      return stateMessage(s)
     }
 
     case 'APPLY_ALL': {
-      // Robust loop lives in applyAllFixes (testable, signature-based, no `dismissed`
-      // pollution). It analyzes via the same backend path and applies via the live/mock
-      // backend, re-reading between edits. Respect prior user dismissals but never add to them.
-      const analyzeFn = (d: DocModel) =>
-        analyze(d, { useAI: state.settings.useAI, backendUrl: state.settings.backendUrl }).then(
-          (flags) => flags.filter((f) => !state.dismissed.has(f.id)),
+      // The robust loop lives in applyAllFixes (testable, signature-based). It respects the
+      // user's earlier dismissals but never adds to them.
+      const s = sessionFor(sender)
+      if (s.doc) {
+        const result = await applyAllFixes(
+          s.doc,
+          async (d) => analyzeFlags(s, d),
+          (d, a) => s.backend.apply(d, a),
         )
-      const result = await applyAllFixes(state.doc, analyzeFn, (d, a) => backend.apply(d, a))
-      state.doc = result.doc
-      state.flags = result.flags
-      await refreshPages()
-      return stateMessage()
+        s.doc = result.doc
+        s.flags = result.flags
+        await refreshPages(s)
+      }
+      return stateMessage(s)
     }
 
-    case 'DISMISS_FLAG':
-      state.dismissed.add(msg.flagId)
-      return stateMessage()
+    case 'DISMISS_FLAG': {
+      const s = sessionFor(sender)
+      s.dismissed.add(msg.flagId)
+      return stateMessage(s)
+    }
 
     case 'REVEAL_FLAG': {
-      // Ask the content script in the active Google Doc tab to scroll to the flag. The
-      // panel doesn't steal tab focus, so the active tab is still the user's document.
-      const flag = state.flags.find((f) => f.id === msg.flagId)
-      if (flag) {
-        const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true })
-        if (tab?.id != null && /docs\.google\.com\/document\//.test(tab.url ?? '')) {
-          const { fraction } = lineLocation(state.doc, flag.range.start)
-          const text = flatten(state.doc).slice(flag.range.start, flag.range.end)
-          chrome.tabs
-            .sendMessage(tab.id, { type: 'SCROLL_TO_FLAG', text, fraction } satisfies Msg)
-            .catch(() => {}) // tab navigated / no content script — ignore
-        }
-      }
-      return { ok: true }
+      // Tell the page where the flag is; the page that owns the overlay does the scrolling
+      // (Docs' native Find in a live doc, or the demo page's own document view).
+      const s = sessionFor(sender)
+      const flag = s.flags.find((f) => f.id === msg.flagId)
+      if (!flag || !s.doc) return undefined
+      const { fraction } = lineLocation(s.doc, flag.range.start)
+      const text = flatten(s.doc).slice(flag.range.start, flag.range.end)
+      return { type: 'SCROLL_TO_FLAG', text, fraction } satisfies Msg
     }
 
-    case 'UPDATE_SETTINGS':
-      state.settings = { ...state.settings, ...msg.settings }
-      await chrome.storage.local.set({ settings: state.settings })
-      await reanalyze()
-      return stateMessage()
-
-    case 'OPEN_PANEL': {
-      const windowId = sender.tab?.windowId
-      if (windowId != null) await chrome.sidePanel.open({ windowId })
-      return { ok: true }
+    case 'UPDATE_SETTINGS': {
+      await loadSettings()
+      settings = { ...settings, ...msg.settings }
+      await chrome.storage.local.set({ settings })
+      return stateMessage(sessionFor(sender))
     }
 
     case 'GET_PRINT_SUMMARY': {
-      if (state.flags.length === 0) {
-        await loadSettings()
-        await ensureDoc()
-        await reanalyze()
-      }
+      const s = sessionFor(sender)
+      await ensureReady(s)
       return {
         type: 'PRINT_SUMMARY',
-        pages: state.pages,
-        unresolved: visibleFlags().map((f) => ({ type: f.type, title: f.title })),
-        settings: state.settings,
+        pages: s.pages,
+        pagesExact: s.pagesExact,
+        unresolved: s.flags
+          .filter((f) => !s.dismissed.has(f.id))
+          .map((f) => ({ type: f.type, title: f.title })),
+        settings,
       } satisfies Msg
     }
 

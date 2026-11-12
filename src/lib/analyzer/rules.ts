@@ -1,12 +1,11 @@
 // The deterministic, offline eco-rules engine. Each detector scans the DocModel and
-// emits Flags with a serializable EditAction. This runs in the side panel today; the
-// optional Gemini backend (server/api/analyze.ts) returns the same Flag shape so the UI
-// is identical whether analysis is local or AI-assisted.
+// emits Flags with a serializable EditAction. Everything runs in the user's browser:
+// there is no server and no AI, so no document text ever leaves the device.
 
 import type { DocModel, Paragraph } from '../docModel.js'
 import { paragraphText, stripBulletGlyph, hasWideIndent, wideIndentSides, INDENT_KEEP_PT } from '../docModel.js'
 import type { EcoImpact, Flag, Range } from './types.js'
-import { condenseLocally, looksVerbose } from './condense.js'
+import { condenseWithChanges, looksVerbose } from './condense.js'
 import { tableLayout } from '../tableLayout.js'
 import { estimatePages } from '../pageEstimate.js'
 
@@ -154,12 +153,10 @@ function detectBlankPage(doc: DocModel): Flag[] {
   const trailing = paras.slice(start)
   if (trailing.length === 0) return []
 
-  // Page math (heuristic): do the trailing blanks fall on their own page?
-  const lpp = doc.linesPerPage
-  const totalLines = estimatePages(doc).lines
-  const contentLines = Math.max(0, totalLines - trailing.length)
-  const totalPages = Math.max(1, Math.ceil(totalLines / lpp))
-  const contentPages = Math.max(1, Math.ceil(contentLines / lpp))
+  // Page math (estimate): lay the doc out with and without the trailing blanks. If the
+  // blanks are what pushes it onto another page, that page is wasted.
+  const totalPages = estimatePages(doc).pages
+  const contentPages = estimatePages({ ...doc, paragraphs: paras.slice(0, start) }).pages
   const createsExtraPage = totalPages > contentPages
 
   // A single trailing blank is the document's natural last paragraph on most docs, so only
@@ -285,20 +282,17 @@ function detectBulletSprawl(doc: DocModel): Flag[] {
 }
 
 // ---------------------------------------------------------------------------
-// 6. Verbose paragraphs → condensed text (offline; Gemini upgrades the suggestion).
+// 6. Verbose paragraphs → condensed text. Fully offline: a rule-based rewrite (see
+//    condense.ts) that lists every phrase it changed, so the user can check each one.
 // ---------------------------------------------------------------------------
-function detectVerbose(doc: DocModel, aiRewrite: boolean): Flag[] {
+function detectVerbose(doc: DocModel): Flag[] {
   const flags: Flag[] = []
   for (const p of doc.paragraphs) {
     if (p.kind !== 'normal') continue
     const text = paragraphText(p)
     if (!looksVerbose(text)) continue
-    const suggestion = condenseLocally(text)
-    const localHelps = suggestion.length < text.length
-    // Offline we can only show a useful card when the local shortener actually trims
-    // something. With AI on, keep the flag even if the local pass is a no-op — the
-    // backend rewrites it with Gemini and fills in a shorter suggestion.
-    if (!localHelps && !aiRewrite) continue
+    const { text: suggestion, changes } = condenseWithChanges(text)
+    if (suggestion.length >= text.length) continue
     const range: Range = { start: p.start!, end: p.end! }
     flags.push({
       id: fid('verbose'),
@@ -307,12 +301,13 @@ function detectVerbose(doc: DocModel, aiRewrite: boolean): Flag[] {
       range,
       title: 'Wordy paragraph',
       explanation:
-        'This paragraph is long and padded. Tightening it removes lines without losing meaning — and you can edit the suggestion before applying.',
+        'Padded phrases make this paragraph longer than it needs to be. The shorter wording keeps the meaning, and you can edit it before applying.',
       before: truncate(text, 90),
-      after: localHelps ? truncate(suggestion, 90) : 'AI will rewrite this to be shorter',
+      after: truncate(suggestion, 90),
       impact: { paper: charsToPaper(text.length - suggestion.length, doc), ink: 0 },
       action: { kind: 'replaceText', range, text: suggestion },
       editableSuggestion: suggestion,
+      rewrites: changes,
     })
   }
   return flags
@@ -473,14 +468,8 @@ function truncate(s: string, n = 60): string {
   return t.length > n ? t.slice(0, n - 1) + '…' : t
 }
 
-export interface AnalyzeDocOptions {
-  /** When true, also flag long paragraphs the offline shortener can't trim, so the
-   *  backend can rewrite them with Gemini. Set by the AI-backed endpoint. */
-  aiRewrite?: boolean
-}
-
 /** Run every detector and return flags ordered by document position. */
-export function analyzeDoc(doc: DocModel, opts: AnalyzeDocOptions = {}): Flag[] {
+export function analyzeDoc(doc: DocModel): Flag[] {
   _fid = 0
   const flags = [
     ...detectHighlights(doc),
@@ -489,7 +478,7 @@ export function analyzeDoc(doc: DocModel, opts: AnalyzeDocOptions = {}): Flag[] 
     ...detectBlankPage(doc),
     ...detectPageBreaks(doc),
     ...detectBulletSprawl(doc),
-    ...detectVerbose(doc, opts.aiRewrite ?? false),
+    ...detectVerbose(doc),
     ...detectLargeImages(doc),
     ...detectWideMargins(doc),
     ...detectWideIndents(doc),

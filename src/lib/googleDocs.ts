@@ -8,21 +8,33 @@ import { BULLET_GLYPH, rebuildOffsets } from './docModel'
 const DOCS_GET = (id: string) => `https://docs.googleapis.com/v1/documents/${id}`
 const DOCS_BATCH = (id: string) =>
   `https://docs.googleapis.com/v1/documents/${id}:batchUpdate`
-const DRIVE_EXPORT_PDF = (id: string) =>
-  `https://www.googleapis.com/drive/v3/files/${id}/export?mimeType=application/pdf`
+// Docs' own "Download as PDF" URL. Fetched with the user's existing docs.google.com
+// session (cookies), not an OAuth token, so it needs no Drive scope at all.
+const DOCS_EXPORT_PDF = (id: string) =>
+  `https://docs.google.com/document/d/${id}/export?format=pdf`
 
 const DEFAULT_FONT = 11
 
-/** Parse the document id out of the active Google Docs tab, or null if not on a doc. */
-export async function getActiveGoogleDocId(): Promise<string | null> {
-  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true })
-  const m = (tab?.url ?? '').match(/\/document\/d\/([a-zA-Z0-9_-]+)/)
+/** Parse the document id out of a Google Docs URL, or null if it isn't one. */
+export function docIdFromUrl(url: string | undefined): string | null {
+  const m = (url ?? '').match(
+    /^https:\/\/docs\.google\.com\/document\/(?:u\/\d+\/)?d\/([a-zA-Z0-9_-]+)/,
+  )
   return m ? m[1] : null
 }
 
 // --- OAuth -----------------------------------------------------------------
-// getAuthToken caches internally, so interactive:true only shows UI the first time;
-// afterwards it resolves silently with the cached token.
+// The only scope is `documents` (read and edit the doc the user is working in).
+// getAuthToken caches internally: interactive:true shows Google's consent screen the first
+// time only; interactive:false never shows UI and fails if the user hasn't consented yet.
+let interactiveAllowed = false
+
+/** Allow (or forbid) showing Google's sign-in UI. Set by the worker per request, so a page
+ *  load never pops a consent window: only a user click does. */
+export function setInteractiveAuth(allowed: boolean): void {
+  interactiveAllowed = allowed
+}
+
 function getToken(interactive: boolean): Promise<string> {
   return new Promise((resolve, reject) => {
     chrome.identity.getAuthToken({ interactive }, (result: unknown) => {
@@ -46,7 +58,7 @@ function invalidate(token: string): Promise<void> {
 
 /** Fetch with the Docs OAuth token; refreshes the token once on a 401 (expired/revoked). */
 async function authedFetch(url: string, init: RequestInit = {}): Promise<Response> {
-  let token = await getToken(true)
+  let token = await getToken(interactiveAllowed)
   const call = (t: string) =>
     fetch(url, {
       ...init,
@@ -55,10 +67,20 @@ async function authedFetch(url: string, init: RequestInit = {}): Promise<Respons
   let res = await call(token)
   if (res.status === 401) {
     await invalidate(token)
-    token = await getToken(true)
+    token = await getToken(interactiveAllowed)
     res = await call(token)
   }
   return res
+}
+
+/** True when the user has already granted access, checked without showing any UI. */
+export async function hasDocsAccess(): Promise<boolean> {
+  try {
+    await getToken(false)
+    return true
+  } catch {
+    return false
+  }
 }
 
 // --- Read ------------------------------------------------------------------
@@ -96,24 +118,33 @@ export function tableCellStarts(api: ApiDoc, atOrAfter: number): number[] {
   return starts
 }
 
-// --- Exact page count ------------------------------------------------------
+// --- Exact page count (experimental) ---------------------------------------
 /**
- * The real number of printed pages, by exporting the doc to PDF (exactly how Google
- * paginates it on print) and counting pages — the Docs API itself returns no page count.
- * Throws on auth/network failure so the caller can fall back to the heuristic estimate.
+ * The real number of printed pages, read from Docs' own PDF export using the user's
+ * existing Google session. This replaces the old Drive API export, so GreenPages needs no
+ * Drive scope (Drive scopes are "restricted" and require a paid annual security audit).
+ *
+ * Undocumented by Google: it may be blocked or change without notice. Every failure throws
+ * so the caller falls back to the layout estimate, labelled "estimate" in the UI.
  */
-export async function fetchDocPageCount(docId: string): Promise<number> {
-  const res = await authedFetch(DRIVE_EXPORT_PDF(docId))
-  if (!res.ok) {
-    // Surface Google's reason (e.g. "Drive API has not been used in project … or it is
-    // disabled", or a 403 for a missing drive scope) so the fallback isn't a mystery.
-    const body = await res.text().catch(() => '')
-    const reason = body.match(/"message":\s*"([^"]+)"/)?.[1] ?? body.slice(0, 200)
-    throw new Error(`Drive export ${res.status}${reason ? `: ${reason}` : ''}`)
+export async function fetchExportPageCount(docId: string, timeoutMs = 20000): Promise<number> {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+  try {
+    const res = await fetch(DOCS_EXPORT_PDF(docId), {
+      credentials: 'include',
+      signal: ctrl.signal,
+    })
+    if (!res.ok) throw new Error(`export ${res.status}`)
+    // A signed-out or blocked request comes back as an HTML page, not a PDF.
+    const type = res.headers.get('content-type') ?? ''
+    if (!type.includes('pdf')) throw new Error(`export returned ${type || 'no content type'}`)
+    const count = countPdfPages(await res.arrayBuffer())
+    if (count <= 0) throw new Error('could not read the page count from the export')
+    return count
+  } finally {
+    clearTimeout(timer)
   }
-  const count = countPdfPages(await res.arrayBuffer())
-  if (count <= 0) throw new Error('could not read page count from the exported PDF')
-  return count
 }
 
 /**
@@ -193,6 +224,9 @@ interface ApiParagraph {
     indentStart?: ApiDimension
     indentEnd?: ApiDimension
     borderBottom?: { width?: ApiDimension }
+    lineSpacing?: number
+    spaceAbove?: ApiDimension
+    spaceBelow?: ApiDimension
   }
   bullet?: unknown
 }
@@ -246,6 +280,7 @@ export function mapApiDoc(docId: string, api: ApiDoc): DocModel {
         id: `t${i++}`,
         kind: 'table',
         runs: [{ text: '', fontSize: DEFAULT_FONT, docStart: el.startIndex }],
+        tableRows: tableCellChars(el.table),
         docStart: el.startIndex,
         docEnd: el.endIndex,
       })
@@ -306,6 +341,9 @@ function mapParagraph(
 
   const indentStartPt = para.paragraphStyle?.indentStart?.magnitude
   const indentEndPt = para.paragraphStyle?.indentEnd?.magnitude
+  const lineSpacing = para.paragraphStyle?.lineSpacing
+  const spaceAbovePt = para.paragraphStyle?.spaceAbove?.magnitude
+  const spaceBelowPt = para.paragraphStyle?.spaceBelow?.magnitude
   // A horizontal line is a separator, not a blank line. It shows up either as a real
   // `horizontalRule` element (Insert → Horizontal line) or as our bottom-border rule.
   const hasHorizontalRule = elements.some((e) => e.horizontalRule)
@@ -320,9 +358,29 @@ function mapParagraph(
     ...(indentStartPt ? { indentStartPt } : {}),
     ...(indentEndPt ? { indentEndPt } : {}),
     ...(isRule ? { isRule: true } : {}),
+    ...(lineSpacing ? { lineSpacing } : {}),
+    ...(spaceAbovePt != null ? { spaceAbovePt } : {}),
+    ...(spaceBelowPt != null ? { spaceBelowPt } : {}),
     docStart: el.startIndex,
     docEnd: el.endIndex,
   }
+}
+
+/** Character count of every cell, row by row, for the page estimate. */
+function tableCellChars(table: ApiTable): number[][] {
+  return (table.tableRows ?? []).map((row) =>
+    (row.tableCells ?? []).map((cell) =>
+      (cell.content ?? []).reduce(
+        (sum, s) =>
+          sum +
+          (s.paragraph?.elements ?? []).reduce(
+            (n, e) => n + (e.textRun?.content ?? '').replace(/\n$/, '').length,
+            0,
+          ),
+        0,
+      ),
+    ),
+  )
 }
 
 /** Collect inline images in a paragraph, resolving each element's size from the doc's

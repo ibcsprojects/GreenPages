@@ -1,71 +1,71 @@
-// Typed message protocol shared by the side panel, content script, and service worker.
-// All payloads are plain JSON (DocModel, Flag, etc. are already serializable).
+// Typed message protocol shared by the in-editor overlay (content script), the demo page,
+// and the service worker. All payloads are plain JSON (DocModel, Flag, etc. are already
+// serializable).
 
 import type { DocModel } from './docModel'
 import type { Flag } from './analyzer/types'
 
 export type Settings = {
+  /** Remind the user to print double-sided in the print check. */
   duplexReminder: boolean
-  /**
-   * Use the Gemini backend to read paragraphs and rewrite wordy ones.
-   * On by default — the backend URL is baked in at build time (VITE_BACKEND_URL),
-   * so AI just works without the user touching settings.
-   */
-  useAI: boolean
-  backendUrl: string
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   duplexReminder: true,
-  useAI: true,
-  backendUrl: import.meta.env.VITE_BACKEND_URL ?? '',
 }
 
 export type Msg =
-  // side panel ⇄ worker
-  | { type: 'GET_STATE' }
+  // overlay ⇄ worker. The worker works out which document a request is about from the
+  // sender's tab, so these messages never carry a document id.
+  | {
+      type: 'GET_STATE'
+      /** True only when the user clicked to connect: allows Google's sign-in window. */
+      connect?: boolean
+    }
   | {
       type: 'STATE'
-      doc: DocModel
+      /** The analyzed document, or null when it isn't loaded (yet). */
+      doc: DocModel | null
       flags: Flag[]
       dismissed: string[]
       settings: Settings
-      /** Whether we're analyzing the user's live Google Doc or the offline sample. */
+      /** Whether we're analyzing the user's live Google Doc or the bundled sample. */
       docSource?: 'live' | 'sample'
-      /** Current page count — exact from a live PDF export, else the heuristic estimate. */
+      /** Current page count. */
       pages?: number
-      /** A user-facing heads-up, e.g. "couldn't open your doc, showing a sample". */
+      /** True when `pages` came from Docs' own PDF export; false when it's our estimate. */
+      pagesExact?: boolean
+      /** The user hasn't connected GreenPages to Google Docs yet (no UI was shown). */
+      needsAccess?: boolean
+      /** A user-facing heads-up, e.g. "couldn't open your doc". */
       notice?: string
-      /** Set when `pages` is the rough estimate because the exact PDF export failed. */
-      pagesNotice?: string
     }
-  /** A handler threw — surfaced to the panel instead of vanishing into a dead port. */
+  /** A handler threw: surfaced to the overlay instead of vanishing into a dead port. */
   | { type: 'ERROR'; message: string }
-  | { type: 'REANALYZE' }
+  | { type: 'REANALYZE'; keepDismissed?: boolean }
   | { type: 'APPLY_FLAG'; flagId: string; overrideText?: string }
   | { type: 'APPLY_ALL' }
   | { type: 'DISMISS_FLAG'; flagId: string }
   | { type: 'REVEAL_FLAG'; flagId: string }
   | { type: 'UPDATE_SETTINGS'; settings: Partial<Settings> }
-  // content script ⇄ worker
-  | { type: 'OPEN_PANEL' }
-  // worker → content script: reveal a flagged span in the live Google Doc.
-  // `fraction` (0..1 share of the doc's lines) drives a guaranteed proportional scroll;
-  // `text` is the flagged text used to drive Docs' native Find for an exact jump+highlight.
+  // worker → page: the toolbar icon was clicked, open or close the overlay.
+  | { type: 'TOGGLE_OVERLAY' }
+  // worker → page: reveal a flagged span. `fraction` (0..1 of the doc's height) drives a
+  // guaranteed proportional scroll; `text` drives Docs' native Find for an exact jump.
   | { type: 'SCROLL_TO_FLAG'; text: string; fraction: number }
   | { type: 'GET_PRINT_SUMMARY' }
   | {
       type: 'PRINT_SUMMARY'
       pages: number
+      pagesExact: boolean
       unresolved: { type: string; title: string }[]
       settings: Settings
     }
-  | { type: 'PRINT_INTERCEPT' } // content → worker: user hit Ctrl+P
 
 /** Thrown when the content script outlives the extension (reload/update/disable). */
 export class ExtensionContextInvalidatedError extends Error {
   constructor() {
-    super('Extension context invalidated — reload the page to reconnect GreenPages.')
+    super('GreenPages was updated. Reload this page to reconnect.')
     this.name = 'ExtensionContextInvalidatedError'
   }
 }
@@ -102,9 +102,9 @@ export function onMessage(
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     const result = handler(msg as Msg, sender)
     if (result instanceof Promise) {
-      // A rejected handler must still answer the port, or the panel's `await sendMessage`
-      // hangs/rejects with "message port closed" and the failure is invisible. Convert any
-      // throw into an ERROR response the panel can show.
+      // A rejected handler must still answer the port, or the caller's `await sendMessage`
+      // hangs or rejects with "message port closed" and the failure is invisible. Convert
+      // any throw into an ERROR response the overlay can show.
       result.then(
         (r) => sendResponse(r),
         (err) =>

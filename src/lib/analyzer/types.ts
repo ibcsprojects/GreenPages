@@ -1,5 +1,5 @@
-// Core types shared by the analyzer, the side panel, the content script, and the
-// (optional) backend. Everything here is plain serializable data so it can cross the
+// Core types shared by the analyzer, the overlay, the content script, and the service
+// worker. Everything here is plain serializable data so it can cross the
 // chrome.runtime message boundary unchanged.
 
 /** A flag category. Drives the chip colour/icon and the kind of eco-saving. */
@@ -10,7 +10,7 @@ export type FlagType =
   | 'fontSize' // oversized body font eating pages
   | 'pageBreak' // hard page break → a slim dashed rule
   | 'bulletSprawl' // many tiny bullets that a table would compress
-  | 'verbose' // redundant text an AI can condense
+  | 'verbose' // padded phrases the offline rewriter can condense
   | 'largeImage' // an oversized image dominating the page
   | 'wideMargins' // oversized page margins shrinking the printable area
   | 'wideIndents' // wide paragraph indents wasting horizontal space
@@ -60,4 +60,6 @@ export interface Flag {
   action: EditAction
   /** For `verbose` flags: the editable suggestion the user can tweak before applying. */
   editableSuggestion?: string
+  /** For `verbose` flags: each phrase the offline rewrite changed ('' = removed). */
+  rewrites?: { from: string; to: string }[]
 }

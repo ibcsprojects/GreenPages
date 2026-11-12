@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GreenPages: print fewer pages from Google Docs</title>
+    <meta
+      name="description"
+      content="GreenPages is a free Chrome extension that finds the formatting in Google Docs that wastes paper and ink, and fixes it in one click. It runs in your browser."
+    />
+    <link rel="icon" href="assets/icon.png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap">
+        <a class="brand" href="./"><img src="assets/icon.png" alt="" />GreenPages</a>
+        <nav aria-label="Site">
+          <a href="install.html">Install</a>
+          <a href="guide.html">Guide</a>
+          <a href="pdf-check/">PDF check</a>
+          <a href="privacy.html">Privacy</a>
+          <a href="https://github.com/ibcsprojects/GreenPages">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <div class="wrap">
+        <section class="hero" aria-labelledby="hero-title">
+          <div>
+            <h1 id="hero-title">Print fewer pages from Google Docs.</h1>
+            <p class="lede">
+              GreenPages finds the formatting that wastes paper and ink, then fixes it in one
+              click. It runs in your browser.
+            </p>
+            <div class="actions">
+              <a class="btn btn-primary" href="install.html">Install for Chrome</a>
+              <a class="btn btn-quiet" href="guide.html">Do it by hand instead</a>
+            </div>
+            <p class="fine">Free and open source. No account with us, no AI, no tracking.</p>
+          </div>
+          <figure>
+            <img
+              src="assets/overlay.png"
+              width="1400"
+              height="930"
+              alt="The GreenPages panel open over a Google Doc, listing eight print issues such as wide margins, an oversized image and highlighted text, with an Apply all button."
+            />
+            <figcaption>The panel sits in the corner of the editor, like a spell checker.</figcaption>
+          </figure>
+        </section>
+      </div>
+
+      <section class="section" aria-labelledby="catches-title">
+        <div class="wrap">
+          <h2 id="catches-title">What it catches</h2>
+          <p>
+            Each issue comes with the fix, how much paper it saves, and a button to apply it. You
+            accept fixes one at a time or all at once.
+          </p>
+          <ul class="catches">
+            <li><b>Highlighted text</b><span>Swaps ink-heavy highlight fills for an underline.</span></li>
+            <li><b>Oversized body text</b><span>Brings 16pt and 18pt paragraphs back to body size.</span></li>
+            <li><b>Wide margins</b><span>Resets margins wider than the default, where it saves paper.</span></li>
+            <li><b>Stacked blank lines</b><span>Collapses runs of empty lines and trailing blank pages.</span></li>
+            <li><b>Hard page breaks</b><span>Replaces a half-empty page with a thin divider.</span></li>
+            <li><b>Long lists of short bullets</b><span>Turns them into a compact table.</span></li>
+            <li><b>Oversized images</b><span>Scales pictures that fill most of a page.</span></li>
+            <li><b>Wordy paragraphs</b><span>Rewrites padded phrases, and shows every change it made.</span></li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="how-title">
+        <div class="wrap">
+          <h2 id="how-title">How it works</h2>
+          <ol class="steps">
+            <li>
+              <h3>Open a document</h3>
+              <p>
+                A small button appears in the corner of the editor with the number of issues
+                found. Click it and connect to Google once.
+              </p>
+            </li>
+            <li>
+              <h3>Review the list</h3>
+              <p>
+                Every issue says what is wrong and what the fix saves. <b>Show</b> jumps to the
+                spot in your document.
+              </p>
+            </li>
+            <li>
+              <h3>Apply, then print</h3>
+              <p>
+                Fix issues one by one or all together. Your document changes only when you click
+                Apply, and Google keeps its version history.
+              </p>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="calc-title">
+        <div class="wrap split">
+          <div>
+            <h2 id="calc-title">How much paper could you save?</h2>
+            <p>
+              Fill in your own numbers. This is plain arithmetic, not a promise: GreenPages shows
+              the real saving for each document in its panel.
+            </p>
+            <p class="note">
+              One page saved per document is a modest starting point. A document with wide
+              margins and large text often saves more.
+            </p>
+          </div>
+          <form class="calc" id="calc" aria-labelledby="calc-title" onsubmit="return false">
+            <label>
+              <span>Documents you print each week</span>
+              <input type="number" id="docs" value="5" min="0" max="500" inputmode="numeric" />
+            </label>
+            <label>
+              <span>Weeks you print each year</span>
+              <input type="number" id="weeks" value="36" min="0" max="52" inputmode="numeric" />
+            </label>
+            <label>
+              <span>Pages saved per document</span>
+              <input type="number" id="saved" value="1" min="0" max="50" inputmode="numeric" />
+            </label>
+            <label class="check">
+              <input type="checkbox" id="duplex" />
+              <span>I print on both sides of the sheet</span>
+            </label>
+            <div class="calc-out" aria-live="polite">
+              <div><b id="out-sheets">180</b><span>sheets saved each year</span></div>
+              <div><b id="out-reams">0.4</b><span>reams of 500 sheets</span></div>
+              <div><b id="out-stack">1.8 cm</b><span>of paper, stacked</span></div>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="private-title">
+        <div class="wrap split">
+          <div>
+            <h2 id="private-title">Your document stays with you</h2>
+            <p>
+              GreenPages has no server. It reads the document you have open through Google's Docs
+              API, checks it inside your browser, and writes back only the fixes you accept.
+            </p>
+            <p>
+              Wordy paragraphs are shortened by a library of plain-language rules, the way spell
+              checkers worked before AI. Nothing is sent to an AI service.
+            </p>
+            <p><a href="privacy.html">Read the privacy policy</a></p>
+          </div>
+          <dl class="facts">
+            <div><dt>Google access</dt><dd>Docs only, one permission</dd></div>
+            <div><dt>Servers we run</dt><dd>None</dd></div>
+            <div><dt>Data we collect</dt><dd>None</dd></div>
+            <div><dt>AI services used</dt><dd>None</dd></div>
+            <div><dt>Price</dt><dd>Free</dd></div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="print-title">
+        <div class="wrap split">
+          <div>
+            <h2 id="print-title">A check before you print</h2>
+            <p>
+              Press Ctrl+P or Cmd+P in a document that still has issues and GreenPages shows the
+              page count, what is left to fix, and a reminder to print double-sided. If the
+              document is already clean, it stays out of your way and the normal print dialog
+              opens.
+            </p>
+          </div>
+          <div>
+            <h2>Not using Google Docs?</h2>
+            <p>
+              The <a href="pdf-check/">PDF check</a> works with a PDF from any app. It finds blank
+              pages and ink-heavy pages and tells you how many sheets each print setting uses. The
+              file never leaves your computer.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="faq-title">
+        <div class="wrap">
+          <h2 id="faq-title">Questions</h2>
+          <div class="faq">
+            <details>
+              <summary>Who can use it right now?</summary>
+              <p>
+                Google reviews any app that edits documents before it lets the public sign in.
+                Until that review finishes, sign-in is limited to approved testers.
+                <a href="install.html">The install page</a> explains how to get added.
+              </p>
+            </details>
+            <details>
+              <summary>Does it change my document without asking?</summary>
+              <p>
+                No. It only reads your document until you click Apply or Apply all. Each change
+                appears in Google's version history (File, then Version history), so you can
+                restore an earlier copy.
+              </p>
+            </details>
+            <details>
+              <summary>Does it use AI?</summary>
+              <p>
+                No. Wordy paragraphs are shortened with a fixed library of plain-language
+                replacements, and the panel lists every change so you can check it. Nothing is
+                sent to an AI service.
+              </p>
+            </details>
+            <details>
+              <summary>Is the page count exact?</summary>
+              <p>
+                It uses Google's own PDF export, so it matches what prints. If that is not
+                available for a document, GreenPages shows an estimate and labels it
+                &ldquo;estimate&rdquo;.
+              </p>
+            </details>
+            <details>
+              <summary>Does it work with Word, Pages or other browsers?</summary>
+              <p>
+                The extension is for Google Docs in Chrome. For anything else, save a PDF and use
+                the <a href="pdf-check/">PDF check</a>, which works in any modern browser.
+              </p>
+            </details>
+            <details>
+              <summary>How do I remove its access?</summary>
+              <p>
+                Open your
+                <a href="https://myaccount.google.com/permissions">Google account permissions</a>,
+                choose GreenPages, and remove access. Removing the extension from Chrome stops it
+                running at all.
+              </p>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="cta-title">
+        <div class="wrap">
+          <div class="cta">
+            <h2 id="cta-title">Try it on your next print.</h2>
+            <div class="actions">
+              <a class="btn btn-primary" href="install.html">Install for Chrome</a>
+              <a class="btn btn-quiet" href="https://github.com/ibcsprojects/GreenPages">See the source</a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap">
+        <span>GreenPages, MIT licence</span>
+        <a href="install.html">Install</a>
+        <a href="guide.html">Guide</a>
+        <a href="privacy.html">Privacy policy</a>
+        <a href="https://github.com/ibcsprojects/GreenPages">Source on GitHub</a>
+        <a href="https://github.com/ibcsprojects/GreenPages/issues">Contact and support</a>
+      </div>
+    </footer>
+
+    <script src="calculator.js"></script>
+  </body>
+</html>

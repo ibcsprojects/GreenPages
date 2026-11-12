@@ -1,25 +1,50 @@
 // Content script injected into Google Docs. Two jobs:
-//  1. Install the print intercept (Layer 2).
-//  2. Float a small "GreenPages" pill that opens the side panel (Mode 3).
+//  1. Mount the in-editor overlay: a launcher in the editor's bottom-right corner and an
+//     issue panel that opens over the document (the way Grammarly and LanguageTool work).
+//  2. Install the print intercept (the eco check before Ctrl/Cmd+P prints).
 //
-// NOTE: we deliberately do not try to draw inline underlines over the document. Google
-// Docs renders text to <canvas>, so per-word screen coordinates aren't available to an
-// extension — that's why analysis + fixes live in the side panel. See docs/ARCHITECTURE.md.
+// NOTE: we deliberately do not draw inline underlines over the text. Google Docs renders
+// text to <canvas>, so per-word screen coordinates aren't available to an extension. The
+// overlay lists issues instead, and "Show" jumps to each one. See docs/ARCHITECTURE.md.
 
-import { sendMessage, onMessage, ExtensionContextInvalidatedError } from '../lib/messaging'
+import { onMessage } from '../lib/messaging'
+import { docIdFromUrl } from '../lib/googleDocs'
+import { mountOverlay, type OverlayController } from '../overlay/mount'
+import { setRevealHandler } from '../overlay/store'
 import { installPrintIntercept } from './printIntercept'
+import { installAutoRescan } from './autoRescan'
 
-installPrintIntercept()
-mountPill()
+// Only on an open document. The manifest already restricts this, but Docs can change URLs
+// in place, so wait for a document URL instead of mounting on a list or home page.
+let overlay: OverlayController | null = null
+function start() {
+  if (overlay || !docIdFromUrl(location.href)) return
+  // Anchor the overlay to the editor area, not the whole window, so it sits inside the
+  // document view and clear of Docs' right-hand toolbar.
+  overlay = mountOverlay(
+    () => document.querySelector('.kix-appview-editor')?.getBoundingClientRect() ?? null,
+  )
+  installPrintIntercept({ onReview: () => overlay?.open() })
+  installAutoRescan()
+}
+start()
+if (!overlay) {
+  const timer = window.setInterval(() => {
+    start()
+    if (overlay) window.clearInterval(timer)
+  }, 1000)
+}
 
-// The side panel asks us to reveal a flagged span. Google Docs paints the body to <canvas>,
-// so there's no DOM element for a paragraph to scrollIntoView, and the Docs REST API can't
-// move the live cursor. The robust approach (the only thing that uses Docs' own canvas-aware
-// text engine from a content script) is its native Find bar — real DOM, and it scrolls to
-// AND highlights the exact text. We always do a proportional scroll first so *something*
-// reliably happens, then drive Find to land precisely.
+// "Show" on a card reveals the flagged span. Google Docs paints the body to <canvas>, so
+// there's no DOM element to scrollIntoView, and the Docs REST API can't move the live
+// cursor. Docs' native Find bar is the one thing that uses its canvas-aware text engine
+// from a content script: it scrolls to AND highlights the exact text. A proportional
+// scroll is the fallback so *something* reliably happens.
+setRevealHandler((text, fraction) => void revealInDoc(text, fraction))
+
+// Toolbar icon clicked.
 onMessage((msg) => {
-  if (msg.type === 'SCROLL_TO_FLAG') void revealInDoc(msg.text, msg.fraction)
+  if (msg.type === 'TOGGLE_OVERLAY') overlay?.toggle()
 })
 
 async function revealInDoc(text: string, fraction: number): Promise<void> {
@@ -212,49 +237,3 @@ function waitFor<T>(fn: () => T | null, timeoutMs: number): Promise<T | null> {
   })
 }
 
-function mountPill(): void {
-  if (document.getElementById('greenpages-pill')) return
-  const host = document.createElement('div')
-  host.id = 'greenpages-pill'
-  document.documentElement.appendChild(host)
-  const root = host.attachShadow({ mode: 'open' })
-
-  const style = document.createElement('style')
-  style.textContent = `
-    .pill {
-      position: fixed; right: 18px; bottom: 18px; z-index: 2147483646;
-      display: flex; align-items: center; gap: 8px;
-      background: #16a34a; color: #fff; border: 0; cursor: pointer;
-      font-family: Inter, system-ui, sans-serif; font-weight: 600; font-size: 13px;
-      padding: 10px 14px; border-radius: 999px;
-      box-shadow: 0 8px 24px rgba(22,163,74,.35);
-      transition: transform .12s ease, background .12s ease;
-    }
-    .pill:hover { transform: translateY(-1px); background: #15803d; }
-    .badge {
-      width: 20px; height: 20px; border-radius: 50%; background: #fff;
-      display: grid; place-items: center; flex: 0 0 auto;
-    }
-    .badge img { width: 15px; height: 15px; display: block; }
-  `
-  root.appendChild(style)
-
-  const logoUrl = chrome.runtime.getURL('icons/icon128.png')
-  const badge = `<span class="badge"><img src="${logoUrl}" alt=""></span>`
-
-  const btn = document.createElement('button')
-  btn.className = 'pill'
-  btn.innerHTML = `${badge}GreenPages`
-  btn.title = 'Open GreenPages eco-formatting panel'
-  btn.addEventListener('click', () => {
-    sendMessage({ type: 'OPEN_PANEL' }).catch((err) => {
-      if (err instanceof ExtensionContextInvalidatedError) {
-        btn.innerHTML = `${badge}Reload page`
-        btn.title = 'GreenPages was updated. Reload this tab to reconnect.'
-      } else {
-        console.error('[GreenPages] OPEN_PANEL failed', err)
-      }
-    })
-  })
-  root.appendChild(btn)
-}

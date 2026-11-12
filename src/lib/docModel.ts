@@ -2,8 +2,8 @@
 // (a document is paragraphs; a paragraph is styled text runs) so that the
 // GoogleDocsBackend can map our edits to `batchUpdate` requests with minimal glue.
 //
-// Until the Docs API is wired (see docs/SETUP.md) the side panel analyzes SAMPLE_DOC,
-// a deliberately wasteful document that trips all six detectors.
+// SAMPLE_DOC is a deliberately wasteful document used by the demo page (no sign-in
+// needed) and by the tests.
 
 export interface TextRun {
   text: string
@@ -52,6 +52,15 @@ export interface Paragraph {
   /** True for an empty paragraph that carries a bottom border, i.e. the horizontal-line
    *  separator the page-break fix creates. It must never count as a blank line. */
   isRule?: boolean
+  /** Line spacing as a percentage (115 = Docs' default "1.15", 200 = double). Read path;
+   *  absent = the default. Feeds the page estimate. */
+  lineSpacing?: number
+  /** Explicit paragraph spacing in points (read path; absent = the style default). */
+  spaceAbovePt?: number
+  spaceBelowPt?: number
+  /** For `kind: 'table'`: character count of each cell, row by row. Lets the page estimate
+   *  size the table without modelling its cells as paragraphs. */
+  tableRows?: number[][]
   /** Google Docs structural extent [docStart, docEnd) including the trailing newline
    *  (read path). Used for paragraph-level edits like deleting blank lines. */
   docStart?: number
