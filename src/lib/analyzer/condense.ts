@@ -233,6 +233,54 @@ const PHRASES: Rule[] = [
   ['whenever it is at all possible', 'whenever possible'],
   ['if at all possible', 'if possible'],
   ['in actual fact', 'in fact'],
+
+  // ---- more padded phrases common in school and office writing ----
+  ['a number of', 'several'],
+  ['a variety of', 'various'],
+  ['a wide variety of', 'many'],
+  ['a wide range of', 'many'],
+  ['a broad range of', 'many'],
+  ['the vast majority of', 'most'],
+  ['in the vast majority of cases', 'usually'],
+  ['a total of', ''],
+  ['for the most part', 'mostly'],
+  ['by and large', 'mostly'],
+  ['more often than not', 'often'],
+  ['to a large extent', 'largely'],
+  ['to a great extent', 'largely'],
+  ['to a certain extent', 'partly'],
+  ['to a certain degree', 'partly'],
+  ['at the end of the day', ''],
+  ['when all is said and done', ''],
+  ['in the final analysis', ''],
+  ["in today's society", 'today'],
+  ['in modern society', 'today'],
+  ['in the modern world', 'today'],
+  ['it is a fact that', ''],
+  ['it can be seen that', ''],
+  ['it is clear that', ''],
+  ['it is obvious that', ''],
+  ['it is evident that', ''],
+  ['there is no doubt that', ''],
+  ['as previously mentioned', ''],
+  ['as mentioned above', ''],
+  ['as mentioned earlier', ''],
+  ['as stated above', ''],
+  ['in the area of', 'in'],
+  ['in the field of', 'in'],
+  ['in the realm of', 'in'],
+  ['with the result that', 'so'],
+  ['is going to', 'will'],
+  ['are going to', 'will'],
+  ['on account of', 'because of'],
+  ['has the potential to', 'could'],
+  ['have the potential to', 'could'],
+  ['at a later date', 'later'],
+  ['at a later time', 'later'],
+  ['the way in which', 'how'],
+  ['the manner in which', 'how'],
+  ['all of the', 'all the'],
+  ['both of the', 'both the'],
 ]
 
 // Openers that add no meaning. Removing one can leave a lower-case sentence start, which
@@ -254,6 +302,14 @@ const FILLER_OPENERS: string[] = [
 // fixed phrases where it carries meaning ("the very first", "very much", "very well").
 const FILLER_WORDS: RegExp[] = [
   /\b(?:basically|literally|totally)\s+(?=[a-z])/gi,
+  // "not really good" and "not actually" mean something different without the filler.
+  /(?<!\bnot\s)\b(?:really|actually)\s+(?=[a-z])/gi,
+  /\b(?:essentially|extremely|incredibly|definitely|certainly|obviously|honestly|frankly|somewhat)\s+(?=[a-z])/gi,
+  /\bsimply\s+(?!put\b)(?=[a-z])/gi,
+  // "quite a few", "quite possibly" and the like carry meaning.
+  /\bquite\s+(?!a\b|so\b|the\b|some\b|often\b|possibly\b|likely\b|sure\b)(?=[a-z])/gi,
+  // Keep "rather than", "or rather" and "would rather".
+  /(?<!\bor\s)(?<!\bwould\s)\brather\s+(?!than\b|be\b|not\b)(?=[a-z])/gi,
   /(?<!\bthe\s)\bvery\s+(?!much\b|many\b|few\b|little\b|well\b|best\b|first\b|last\b|same\b|end\b|own\b|beginning\b|least\b|most\b)(?=[a-z])/gi,
 ]
 
@@ -308,7 +364,16 @@ export function condenseWithChanges(input: string): CondenseResult {
   for (const [re, rep] of COMPILED) run(re, rep)
   for (const re of FILLER_WORDS) run(re, '')
 
+  // "the the", "of of": a doubled small word is a typo, not emphasis.
+  out = out.replace(/\b(the|a|an|of|in|on|and|for|with)\s+\1\b/gi, (m, w: string) => {
+    changes.push({ from: m.replace(/\s+/g, ' '), to: w })
+    return w
+  })
+
   out = out
+    // A comma left behind by a removed opener goes with it.
+    .replace(new RegExp(`${CAP}\\s*,\\s*`, 'g'), CAP)
+    .replace(/([.!?])\s*,\s*/g, '$1 ')
     // A removed capitalized opener hands its capital to the next word.
     .replace(new RegExp(`${CAP}\\s*([a-z])`, 'g'), (_, c: string) => c.toUpperCase())
     .replace(new RegExp(CAP, 'g'), '')
@@ -321,8 +386,17 @@ export function condenseWithChanges(input: string): CondenseResult {
   out = out.replace(/(^|[.!?]\s+)([a-z])/g, (_, pre: string, c: string) => pre + c.toUpperCase())
 
   // Rules run longest-first; list the changes in reading order instead.
+  // A sentence the text says twice is said once.
+  const deduped = dropRepeatedSentences(out)
+  out = deduped.text
+  for (const sentence of deduped.dropped) changes.push({ from: sentence, to: '' })
+
   const lower = input.replace(/\s+/g, ' ').toLowerCase()
-  changes.sort((a, b) => lower.indexOf(a.from.toLowerCase()) - lower.indexOf(b.from.toLowerCase()))
+  const at = (r: Rewrite) => {
+    const i = lower.indexOf(r.from.toLowerCase())
+    return i < 0 ? Number.MAX_SAFE_INTEGER : i
+  }
+  changes.sort((a, b) => at(a) - at(b))
 
   return { text: out, changes }
 }
@@ -332,13 +406,168 @@ export function condenseLocally(input: string): string {
   return condenseWithChanges(input).text
 }
 
+// ---------------------------------------------------------------------------
+// Sentence-level shortening. Phrase swaps only help text that uses stock phrases; padded
+// student and office prose is usually just long. These steps work on whole sentences.
+// ---------------------------------------------------------------------------
+
+const ABBREVIATION = /(?:\b(?:e\.g|i\.e|etc|vs|cf|Dr|Mr|Mrs|Ms|Prof|Sr|Jr|St|Fig|approx|No)|\b[A-Z])\.$/
+
+/** Split prose into sentences. Abbreviations like "e.g." and "Dr." don't end one. */
+export function splitSentences(text: string): string[] {
+  const raw = text.split(/(?<=[.!?]["')\]]?)\s+(?=["'(\[]?[A-Z0-9])/)
+  const out: string[] = []
+  for (const part of raw) {
+    const prev = out[out.length - 1]
+    if (prev !== undefined && ABBREVIATION.test(prev)) out[out.length - 1] = `${prev} ${part}`
+    else out.push(part)
+  }
+  return out.map((x) => x.trim()).filter(Boolean)
+}
+
+const countWords = (t: string) => t.trim().split(/\s+/).filter(Boolean).length
+
+const STOPWORDS = new Set(
+  (
+    'a an and are as at be been but by for from had has have he her his i if in into is it its ' +
+    'me my no not of on or our she so than that the their them then there these they this to ' +
+    'was we were what when which who will with would you your can could should also very more ' +
+    'most such some any each other about over under after before while because just than'
+  ).split(' '),
+)
+
+/** The meaningful words of a sentence, lower-cased. */
+function contentWords(sentence: string): string[] {
+  return (sentence.toLowerCase().match(/[\p{L}\p{N}']+/gu) ?? []).filter(
+    (w) => w.length > 2 && !STOPWORDS.has(w),
+  )
+}
+
+const overlap = (a: Set<string>, b: Set<string>) => {
+  if (a.size === 0 || b.size === 0) return 0
+  let shared = 0
+  for (const w of a) if (b.has(w)) shared++
+  return shared / (a.size + b.size - shared)
+}
+
+/** Remove a sentence that repeats an earlier one, word for word or very nearly. */
+export function dropRepeatedSentences(text: string): { text: string; dropped: string[] } {
+  const sentences = splitSentences(text)
+  if (sentences.length < 2) return { text, dropped: [] }
+  const kept: string[] = []
+  const keptWords: Set<string>[] = []
+  const dropped: string[] = []
+  for (const sentence of sentences) {
+    const words = new Set(contentWords(sentence))
+    const norm = sentence.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
+    const repeat = kept.some(
+      (k, i) =>
+        k.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim() === norm ||
+        (words.size >= 6 && keptWords[i].size >= 6 && overlap(words, keptWords[i]) >= 0.85),
+    )
+    if (repeat) dropped.push(sentence)
+    else {
+      kept.push(sentence)
+      keptWords.push(words)
+    }
+  }
+  return dropped.length ? { text: kept.join(' '), dropped } : { text, dropped: [] }
+}
+
+/** Long paragraphs only: below this the sentence-dropping pass stays out of the way. */
+const TRIM_MIN_WORDS = 90
+const TRIM_MIN_SENTENCES = 5
+/** Aim to keep about this share of the words, and never cut more than the floor allows. */
+const TRIM_TARGET = 0.75
+const TRIM_FLOOR = 0.62
+/** Not worth suggesting unless at least this share of the words goes. */
+const TRIM_MIN_SAVING = 0.15
+
 /**
- * Is this paragraph worth a "wordy paragraph" card? Only when the offline rewrite trims a
- * meaningful amount: 10% of the text, or 30+ characters (about a third of a printed line).
+ * Shorten a very long paragraph by leaving out its least important sentences. Sentences
+ * that carry the paragraph's recurring words rank highest, the first and last sentence
+ * always stay, and a sentence that mostly repeats a kept one goes first. The result keeps the
+ * original order. Because this removes whole sentences it is only ever offered as a
+ * suggestion to review, never applied automatically.
  */
+export function shortenLongText(text: string): { text: string; dropped: string[] } | null {
+  const sentences = splitSentences(text)
+  const total = countWords(text)
+  if (sentences.length < TRIM_MIN_SENTENCES || total < TRIM_MIN_WORDS) return null
+
+  const words = sentences.map((s) => countWords(s))
+  const content = sentences.map(contentWords)
+  const sets = content.map((c) => new Set(c))
+  // How many sentences each word appears in: words that recur are what the paragraph is about.
+  const spread = new Map<string, number>()
+  for (const set of sets) for (const w of set) spread.set(w, (spread.get(w) ?? 0) + 1)
+
+  const score = content.map((ws, i) => {
+    if (ws.length === 0) return 0
+    const topical = ws.reduce((sum, w) => sum + ((spread.get(w) ?? 1) - 1), 0) / Math.sqrt(ws.length)
+    const repeatsEarlier = sets.slice(0, i).some((earlier) => overlap(sets[i], earlier) >= 0.6)
+    return repeatsEarlier ? topical * 0.4 : topical
+  })
+
+  const keep = sentences.map(() => true)
+  let remaining = total
+  let kept = sentences.length
+  const limit = Math.ceil(total * TRIM_TARGET)
+  const droppable = sentences
+    .map((_, i) => i)
+    .filter((i) => i > 0 && i < sentences.length - 1)
+    .sort((a, b) => score[a] - score[b] || b - a)
+  for (const i of droppable) {
+    if (remaining <= limit || kept <= 3) break
+    if (remaining - words[i] < total * TRIM_FLOOR) continue
+    keep[i] = false
+    remaining -= words[i]
+    kept--
+  }
+  if (total - remaining < total * TRIM_MIN_SAVING) return null
+  return {
+    text: sentences.filter((_, i) => keep[i]).join(' '),
+    dropped: sentences.filter((_, i) => !keep[i]),
+  }
+}
+
+/** What the offline rewrite suggests for a paragraph, and how it got there. */
+export interface Wordiness {
+  text: string
+  changes: Rewrite[]
+  /** true when whole sentences were left out, so the suggestion needs a careful read. */
+  trimmed: boolean
+  /** How many whole sentences the trim left out (not counting repeats). */
+  sentencesLeftOut: number
+  wordsBefore: number
+  wordsAfter: number
+}
+
+/**
+ * The offline rewrite of a paragraph: padded phrases and filler out, repeated sentences
+ * out, and, for very long paragraphs, the least important sentences out as well. Returns
+ * null when the paragraph isn't wordy enough to be worth a card: at least 12 words, and
+ * the rewrite saves 10% of the text or 30 characters (about a third of a printed line).
+ */
+export function analyzeWordiness(input: string): Wordiness | null {
+  const wordsBefore = countWords(input)
+  if (wordsBefore < 12) return null
+  const base = condenseWithChanges(input)
+  let text = base.text
+  let changes = base.changes
+  let trimmed = false
+  const trim = shortenLongText(text)
+  if (trim) {
+    text = trim.text
+    changes = [...changes, ...trim.dropped.map((from) => ({ from, to: '' }))]
+    trimmed = true
+  }
+  const saved = input.length - text.length
+  if (!(saved >= 30 || saved >= input.length * 0.1)) return null
+  return { text, changes, trimmed, sentencesLeftOut: trim?.dropped.length ?? 0, wordsBefore, wordsAfter: countWords(text) }
+}
+
+/** Is this paragraph worth a "wordy paragraph" card? */
 export function looksVerbose(text: string): boolean {
-  const words = text.trim().split(/\s+/).filter(Boolean)
-  if (words.length < 12) return false
-  const saved = text.length - condenseLocally(text).length
-  return saved >= 30 || saved >= text.length * 0.1
+  return analyzeWordiness(text) !== null
 }

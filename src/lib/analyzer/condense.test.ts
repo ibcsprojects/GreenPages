@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { condenseLocally, condenseWithChanges, looksVerbose } from './condense'
+import {
+  analyzeWordiness,
+  condenseLocally,
+  condenseWithChanges,
+  dropRepeatedSentences,
+  looksVerbose,
+  shortenLongText,
+  splitSentences,
+} from './condense'
 
 describe('condenseWithChanges (offline, no AI)', () => {
   it('replaces padded phrases with plain ones', () => {
@@ -78,5 +86,99 @@ describe('looksVerbose', () => {
         'It is important to note that due to the fact that a large number of students print on a daily basis, we need to make an effort to cut paper use.',
       ),
     ).toBe(true)
+  })
+})
+
+describe('filler words and padded openers', () => {
+  it('removes filler adverbs that add no meaning', () => {
+    expect(condenseLocally('This is really important and extremely useful.')).toBe('This is important and useful.')
+    expect(condenseLocally('We definitely want to keep going.')).toBe('We want to keep going.')
+  })
+
+  it('keeps the words where removing them changes the meaning', () => {
+    expect(condenseLocally('It was not really good.')).toBe('It was not really good.')
+    expect(condenseLocally('She chose tea rather than coffee.')).toBe('She chose tea rather than coffee.')
+    expect(condenseLocally('There were quite a few people there.')).toBe('There were quite a few people there.')
+  })
+
+  it('cuts the padded phrases common in school and office writing', () => {
+    expect(condenseLocally('A number of students took part.')).toBe('Several students took part.')
+    expect(condenseLocally('At the end of the day, the plan worked.')).toBe('The plan worked.')
+    expect(condenseLocally('The group is going to meet on Friday.')).toBe('The group will meet on Friday.')
+  })
+
+  it('collapses a doubled small word', () => {
+    expect(condenseLocally('We went to the the shop.')).toBe('We went to the shop.')
+  })
+})
+
+describe('sentence-level shortening', () => {
+  it('splits sentences without breaking on abbreviations', () => {
+    expect(splitSentences('Use e.g. a ruler. Dr. Lee agreed. It works!')).toEqual([
+      'Use e.g. a ruler.',
+      'Dr. Lee agreed.',
+      'It works!',
+    ])
+  })
+
+  it('drops a sentence the text says twice', () => {
+    const r = dropRepeatedSentences('Paper is useful. We should save it. Paper is useful. Thank you.')
+    expect(r.text).toBe('Paper is useful. We should save it. Thank you.')
+    expect(r.dropped).toEqual(['Paper is useful.'])
+  })
+
+  it('does not treat two different sentences as repeats', () => {
+    const t = 'The cat chased the mouse across the kitchen floor. The mouse escaped through the small hole.'
+    expect(dropRepeatedSentences(t).dropped).toEqual([])
+  })
+
+  const LONG = [
+    'Paper is used in almost every school across the country and the amount that gets used is much larger than most people would ever imagine.',
+    'Every year schools print millions of pages of worksheets, handouts, reports and notices, and a surprising share of those pages is thrown away after a single use.',
+    'The cost of all this paper is not only financial, because making paper takes trees, water and a great deal of energy.',
+    'Water is needed at nearly every stage of making paper, from the pulp to the finished sheets.',
+    'Some schools have started to count how many pages each department prints, and a few of them have found that showing the numbers is enough to change habits.',
+    'Printing on both sides of the sheet is one of the easiest changes, and it can cut paper use by close to half.',
+    'Reducing margins, choosing a smaller font and removing blank pages also help to save paper without making documents harder to read.',
+    'In the end the best way to cut paper waste is to think before printing and to check each document for pages that are not needed.',
+  ].join(' ')
+
+  it('shortens a very long paragraph, keeping order and its first and last sentences', () => {
+    const r = shortenLongText(LONG)!
+    expect(r).not.toBeNull()
+    const sentences = splitSentences(LONG)
+    const kept = splitSentences(r.text)
+    expect(kept[0]).toBe(sentences[0])
+    expect(kept[kept.length - 1]).toBe(sentences[sentences.length - 1])
+    expect(kept.length + r.dropped.length).toBe(sentences.length)
+    // Order is preserved.
+    expect(kept.map((k) => sentences.indexOf(k))).toEqual([...kept.map((k) => sentences.indexOf(k))].sort((a, b) => a - b))
+    const words = (t: string) => t.split(/\s+/).length
+    expect(words(r.text)).toBeLessThan(words(LONG) * 0.85)
+    expect(words(r.text)).toBeGreaterThan(words(LONG) * 0.5)
+  })
+
+  it('leaves short paragraphs alone', () => {
+    expect(shortenLongText('One sentence. Two sentences. Three sentences. Four sentences. Five sentences.')).toBeNull()
+  })
+
+  it('analyzeWordiness reports the trim and the word counts', () => {
+    const w = analyzeWordiness(LONG)!
+    expect(w.trimmed).toBe(true)
+    expect(w.sentencesLeftOut).toBeGreaterThan(0)
+    expect(w.wordsAfter).toBeLessThan(w.wordsBefore)
+  })
+
+  it('analyzeWordiness stays quiet on tight writing', () => {
+    expect(analyzeWordiness('The meeting starts at nine. Bring your laptop and the report.')).toBeNull()
+    expect(analyzeWordiness('Too short.')).toBeNull()
+  })
+
+  it('flags a filler-heavy paragraph even when it is not long', () => {
+    const w = analyzeWordiness(
+      'Our school is really committed to reducing waste. We are actually quite proud of the extremely good progress we have made, and we definitely want to keep going because it is basically the right thing to do for everyone.',
+    )!
+    expect(w.trimmed).toBe(false)
+    expect(w.wordsAfter).toBeLessThan(w.wordsBefore)
   })
 })

@@ -62,4 +62,7 @@ export interface Flag {
   editableSuggestion?: string
   /** For `verbose` flags: each phrase the offline rewrite changed ('' = removed). */
   rewrites?: { from: string; to: string }[]
+  /** The fix leaves out whole sentences, so it's offered for a careful read and is never
+   *  part of an "apply all". */
+  reviewFirst?: boolean
 }

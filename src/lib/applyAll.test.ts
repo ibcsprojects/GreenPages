@@ -75,4 +75,33 @@ describe('applyAllFixes', () => {
     expect(flags).toHaveLength(1)
     expect(calls).toBeLessThan(10) // terminated quickly, no runaway loop
   })
+
+  it('never applies a fix that leaves out whole sentences', async () => {
+    const sentences = [
+      'Paper is used in almost every school across the country and the amount that gets used is much larger than most people would ever imagine.',
+      'Every year schools print millions of pages of worksheets, handouts, reports and notices, and a surprising share of those pages is thrown away after a single use.',
+      'The cost of all this paper is not only financial, because making paper takes trees, water and a great deal of energy.',
+      'Water is needed at nearly every stage of making paper, from the pulp to the finished sheets.',
+      'Some schools have started to count how many pages each department prints, and a few of them have found that showing the numbers is enough to change habits.',
+      'Printing on both sides of the sheet is one of the easiest changes, and it can cut paper use by close to half.',
+      'Reducing margins, choosing a smaller font and removing blank pages also help to save paper without making documents harder to read.',
+      'In the end the best way to cut paper waste is to think before printing and to check each document for pages that are not needed.',
+    ]
+    const doc: DocModel = rebuildOffsets({
+      id: 'd',
+      title: 't',
+      defaultFontSize: 11,
+      linesPerPage: 46,
+      paragraphs: [{ id: 'a', kind: 'normal', runs: [{ text: sentences.join(' '), fontSize: 11 }] }],
+    })
+    const before = analyzeDoc(doc)
+    const long = before.find((f) => f.type === 'verbose')!
+    expect(long.reviewFirst).toBe(true)
+
+    const { doc: out, flags, applied } = await applyAllFixes(doc, analyze, apply)
+    expect(applied).toBe(0)
+    expect(out.paragraphs[0].runs.map((r) => r.text).join('')).toBe(sentences.join(' '))
+    expect(flags.some((f) => f.reviewFirst)).toBe(true) // still there, waiting for a human
+  })
 })
+

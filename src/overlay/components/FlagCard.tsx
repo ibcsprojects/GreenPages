@@ -124,6 +124,12 @@ function FlagIssueBody({ flag, showTitle = false }: { flag: Flag; showTitle?: bo
           </ul>
         </div>
       )}
+      {flag.reviewFirst && (
+        <p className="mt-2 rounded-md bg-amber-50 px-2 py-1.5 text-[11px] text-bark-800">
+          This one leaves out whole sentences, so it is not part of Apply all. Read it, edit it if
+          something important is missing, then apply it.
+        </p>
+      )}
 
       <div className="mt-2.5 flex items-center gap-1.5">
         <button

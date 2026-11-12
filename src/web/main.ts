@@ -69,8 +69,9 @@ function render() {
     ),
   )
   const bar = el('div', 'fx-actions')
-  if (flags.length > 0) {
-    const all = el('button', 'btn btn-primary', `Apply all ${plural(flags.length, 'fix', 'fixes')}`)
+  const quick = flags.filter((f) => !f.reviewFirst)
+  if (quick.length > 0) {
+    const all = el('button', 'btn btn-primary', `Apply all ${plural(quick.length, 'fix', 'fixes')}`)
     all.type = 'button'
     all.addEventListener('click', () => run(() => s.applyAll()))
     bar.append(all)

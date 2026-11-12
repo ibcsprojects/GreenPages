@@ -18,6 +18,7 @@ import {
 } from '../lib/googleDocs'
 import { estimatePages, lineLocation } from '../lib/pageEstimate'
 import { DEFAULT_SETTINGS, onMessage, type Msg, type Settings } from '../lib/messaging'
+import { revealQuery } from '../lib/revealQuery'
 
 interface Session {
   /** Google Doc id, or null for the offline sample. */
@@ -266,7 +267,9 @@ onMessage(async (msg: Msg, sender) => {
       const flag = s.flags.find((f) => f.id === msg.flagId)
       if (!flag || !s.doc) return undefined
       const { fraction } = lineLocation(s.doc, flag.range.start)
-      const text = flatten(s.doc).slice(flag.range.start, flag.range.end)
+      // A short plain-text anchor Docs' Find can match, taken from the span itself or, for
+      // blank lines, images and page breaks, from the text right beside it.
+      const text = revealQuery(flatten(s.doc), flag.range)?.query ?? ''
       return { type: 'SCROLL_TO_FLAG', text, fraction } satisfies Msg
     }
 

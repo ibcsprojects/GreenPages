@@ -5,7 +5,7 @@
 import type { DocModel, Paragraph } from '../docModel.js'
 import { paragraphText, stripBulletGlyph, hasWideIndent, wideIndentSides, INDENT_KEEP_PT } from '../docModel.js'
 import type { EcoImpact, Flag, Range } from './types.js'
-import { condenseWithChanges, looksVerbose } from './condense.js'
+import { analyzeWordiness } from './condense.js'
 import { tableLayout } from '../tableLayout.js'
 import { estimatePages } from '../pageEstimate.js'
 
@@ -290,24 +290,26 @@ function detectVerbose(doc: DocModel): Flag[] {
   for (const p of doc.paragraphs) {
     if (p.kind !== 'normal') continue
     const text = paragraphText(p)
-    if (!looksVerbose(text)) continue
-    const { text: suggestion, changes } = condenseWithChanges(text)
-    if (suggestion.length >= text.length) continue
+    const w = analyzeWordiness(text)
+    if (!w || w.text.length >= text.length) continue
     const range: Range = { start: p.start!, end: p.end! }
+    const cut = w.wordsBefore - w.wordsAfter
     flags.push({
       id: fid('verbose'),
       type: 'verbose',
-      severity: 'medium',
+      severity: w.trimmed ? 'high' : 'medium',
       range,
-      title: 'Wordy paragraph',
-      explanation:
-        'Padded phrases make this paragraph longer than it needs to be. The shorter wording keeps the meaning, and you can edit it before applying.',
+      title: w.trimmed ? 'Very long paragraph' : 'Wordy paragraph',
+      explanation: w.trimmed
+        ? `This paragraph runs ${w.wordsBefore} words. A shorter version of ${w.wordsAfter} words keeps the main points and leaves out ${w.sentencesLeftOut} sentence${w.sentencesLeftOut === 1 ? '' : 's'}. Read it before you apply it, and edit it if something important is missing.`
+        : `This paragraph can lose ${cut} of its ${w.wordsBefore} words without changing what it says. You can edit the shorter wording before applying it.`,
       before: truncate(text, 90),
-      after: truncate(suggestion, 90),
-      impact: { paper: charsToPaper(text.length - suggestion.length, doc), ink: 0 },
-      action: { kind: 'replaceText', range, text: suggestion },
-      editableSuggestion: suggestion,
-      rewrites: changes,
+      after: truncate(w.text, 90),
+      impact: { paper: charsToPaper(text.length - w.text.length, doc), ink: 0 },
+      action: { kind: 'replaceText', range, text: w.text },
+      editableSuggestion: w.text,
+      rewrites: w.changes.map((c) => ({ from: truncate(c.from, 110), to: c.to })),
+      reviewFirst: w.trimmed || undefined,
     })
   }
   return flags

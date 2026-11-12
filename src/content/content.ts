@@ -48,19 +48,39 @@ onMessage((msg) => {
 })
 
 async function revealInDoc(text: string, fraction: number): Promise<void> {
-  // Use the *full* snippet (whitespace-normalized) so Docs highlights the entire flagged
-  // span, not just its first words. Fall back to a proportional scroll only if the (hidden)
-  // find bar never opens. Find-first avoids a visible double-jump.
+  // `text` is a short plain-text anchor chosen by the service worker (see revealQuery.ts).
+  // Find-first avoids a visible double-jump; the proportional scroll is the safety net for
+  // when Docs finds nothing, which used to leave the card doing nothing at all.
   const query = text.replace(/\s+/g, ' ').trim()
-  const found = query.length >= 4 && (await findInDoc(query))
-  if (!found) scrollProportionally(fraction)
+  const scroller = docScroller()
+  const before = scroller?.scrollTop ?? 0
+  const outcome: FindOutcome = query.length >= 4 ? await findInDoc(query) : { state: 'unavailable', counter: '' }
+  console.debug('[SparePage] reveal', { query, outcome })
+  if (outcome.state === 'found') return
+  if (outcome.state !== 'unknown') return scrollProportionally(fraction)
+
+  // Docs showed no match count we can read. If it scrolled, it found the text. If nothing
+  // moved, the match may already be on screen, so only scroll when our estimate is well away.
+  await new Promise((r) => setTimeout(r, 450))
+  if (!scroller || Math.abs(scroller.scrollTop - before) > 2) return
+  const max = scroller.scrollHeight - scroller.clientHeight
+  const target = max * fraction
+  const view = scroller.clientHeight
+  if (target < scroller.scrollTop - view * 0.5 || target > scroller.scrollTop + view * 1.5) {
+    scrollProportionally(fraction)
+  }
+}
+
+function docScroller(): HTMLElement | null {
+  return (
+    document.querySelector<HTMLElement>('.kix-appview-editor') ??
+    (document.scrollingElement as HTMLElement | null)
+  )
 }
 
 /** Proportional scroll of the Kix editor — approximate, but always works. */
 function scrollProportionally(fraction: number): void {
-  const scroller =
-    document.querySelector<HTMLElement>('.kix-appview-editor') ??
-    (document.scrollingElement as HTMLElement | null)
+  const scroller = docScroller()
   if (!scroller) return
   const max = scroller.scrollHeight - scroller.clientHeight
   scroller.scrollTo({ top: Math.max(0, max * fraction), behavior: 'smooth' })
@@ -68,8 +88,10 @@ function scrollProportionally(fraction: number): void {
 
 /** Open Docs' native Find bar (kept visually hidden), type the query, and trigger the
  *  search so Docs scrolls to + highlights the match — without the user ever seeing the bar.
- *  Returns false if the find bar never appeared. */
-async function findInDoc(query: string): Promise<boolean> {
+ *  Says whether the find bar appeared and whether it reported a match. */
+type FindOutcome = { state: 'found' | 'none' | 'unknown' | 'unavailable'; counter: string }
+
+async function findInDoc(query: string): Promise<FindOutcome> {
   const css = injectFindBarHider() // layer 1: pre-hide by class to guard against any flash
   const hider = hideFindCardWhileSearching() // layer 2: class/locale-proof, before first paint
   dispatchFindShortcut()
@@ -77,7 +99,7 @@ async function findInDoc(query: string): Promise<boolean> {
   if (!input) {
     css.remove()
     hider.stop()
-    return false
+    return { state: 'unavailable', counter: '' }
   }
   input.focus()
   setNativeValue(input, query)
@@ -94,7 +116,13 @@ async function findInDoc(query: string): Promise<boolean> {
     css.remove()
     hider.stop()
   })
-  return true
+  // Docs shows a match count beside the input ("1 of 3"). Read it once the search has run:
+  // a total of 0 means no match. The wording is localized, so only the numbers are used.
+  await new Promise((r) => setTimeout(r, 350))
+  const counter = (getFindCard(input).textContent ?? '').replace(/\s+/g, ' ').trim()
+  const m = counter.match(/(\d+)\D{1,12}(\d+)/)
+  if (m) return { state: Number(m[2]) === 0 ? 'none' : 'found', counter }
+  return { state: 'unknown', counter }
 }
 
 /** A stylesheet that hides Docs' find bar by class (class names aren't localized). Kept as a

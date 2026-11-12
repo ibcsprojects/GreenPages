@@ -39,7 +39,7 @@ export class WordSession {
   }
 
   get applicableCount(): number {
-    return this.flags.filter((f) => this.unsupported(f) === null).length
+    return this.flags.filter((f) => !f.reviewFirst && this.unsupported(f) === null).length
   }
 
   async apply(flag: Flag): Promise<void> {
@@ -55,7 +55,7 @@ export class WordSession {
     const tried = new Set<string>()
     let applied = 0
     for (let guard = 0; guard < 50; guard++) {
-      const next = this.flags.find((f) => !tried.has(signature(f)) && this.unsupported(f) === null)
+      const next = this.flags.find((f) => !f.reviewFirst && !tried.has(signature(f)) && this.unsupported(f) === null)
       if (!next) break
       tried.add(signature(next))
       await this.apply(next)
