@@ -78,7 +78,7 @@ function DocView({
   const m = doc.margins ?? { topPt: 72, bottomPt: 72, leftPt: 72, rightPt: 72 }
   return (
     <div
-      ref={pageRef}
+      ref={pageRef} data-sparepage-page
       className="mx-auto bg-white shadow-[0_1px_3px_rgba(0,0,0,0.12),0_8px_24px_rgba(0,0,0,0.06)]"
       style={{
         width: widthPt * PX_PER_PT,

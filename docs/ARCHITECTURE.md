@@ -31,8 +31,10 @@ export (exact page count).
   when the user clicks **Connect**; a page load checks access silently.
 
 - **`src/overlay/`** is the UI: React, Tailwind, zustand and Framer Motion, mounted into a
-  Shadow DOM by `mount.tsx` so Docs' CSS can't reach it. `Overlay.tsx` holds the launcher
-  (pinned to the bottom-right corner of `.kix-appview-editor`) and the panel; `components/`
+  Shadow DOM by `mount.tsx` so Docs' CSS can't reach it. `Overlay.tsx` holds the page tab
+  (attached to the right edge of the page the reader is on, placed by `tabPosition.ts`, and
+  following them to the next page) and the panel, which opens at the bottom-right of
+  `.kix-appview-editor`; `components/`
   holds the score strip, issue cards and sort menu; `store.ts` mirrors worker state. The
   Tailwind CSS is imported as a string (`overlay.css?inline`) and injected into the shadow
   root.

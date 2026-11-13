@@ -1,7 +1,7 @@
-// The in-editor overlay: a small launcher pinned to the bottom-right corner of the Docs
-// editor (the way Grammarly and LanguageTool sit inside the text area), and an issue panel
-// that opens over the document from that corner. Rendered inside a Shadow DOM by mount.tsx,
-// so Google Docs' styles can't reach it and ours can't leak out.
+// The in-editor overlay: a small tab attached to the right edge of the document page the reader
+// is on (it follows them down the document and onto the next page), and an issue panel that
+// opens over the document from the editor's bottom-right corner. Rendered inside a Shadow DOM by
+// mount.tsx, so Google Docs' styles can't reach it and ours can't leak out.
 
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion'
@@ -10,6 +10,7 @@ import { FlagList } from './components/FlagList'
 import { EcoScore } from './components/EcoScore'
 import { SortMenu } from './components/SortMenu'
 import { logoUrl } from './logo'
+import { tabPosition, type Box } from './tabPosition'
 
 // Enter: ease-out, under 200ms, transform + opacity only.
 const EASE_OUT = [0.16, 1, 0.3, 1] as const
@@ -30,8 +31,8 @@ export function Overlay({ anchor }: { anchor?: () => DOMRect | null }) {
         style={{ right: offset.right, bottom: offset.bottom }}
       >
         <AnimatePresence>{open && <Panel key="panel" />}</AnimatePresence>
-        <Launcher />
       </div>
+      <PageTab anchor={anchor} />
     </MotionConfig>
   )
 }
@@ -65,13 +66,67 @@ function useEditorCorner(anchor?: () => DOMRect | null) {
   return offset
 }
 
-function Launcher() {
+/** The page boxes Docs lays out (any order). Docs paints text to a canvas, but each page is
+ *  still a positioned element, which is all the placement needs. The demo page tags its page. */
+const PAGE_SELECTOR = '.kix-page-paginated, .kix-page, [data-sparepage-page]'
+
+const toBox = (r: DOMRect): Box => ({ left: r.left, top: r.top, right: r.right, bottom: r.bottom })
+
+function findPages(): Box[] {
+  return Array.from(document.querySelectorAll(PAGE_SELECTOR))
+    .map((e) => e.getBoundingClientRect())
+    .filter((r) => r.width > 0 && r.height > 0)
+    .map(toBox)
+}
+
+/**
+ * Keep the tab on the right edge of the current page. Only `transform` changes as the reader
+ * scrolls, so it never forces a layout. Scroll events don't bubble, so one capturing listener
+ * catches the editor's scroller wherever Docs puts it; an interval covers zoom and layout
+ * changes that fire no event.
+ */
+function usePageTab(anchor?: () => DOMRect | null) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    let frame = 0
+    const place = () => {
+      frame = 0
+      const rect = anchor?.()
+      const view: Box =
+        rect && rect.width > 0
+          ? toBox(rect)
+          : { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight }
+      const { x, y } = tabPosition(view, findPages())
+      el.style.transform = `translate3d(${x}px, ${y}px, 0)`
+      el.style.visibility = 'visible' // hidden until the first placement, so it never flashes at 0,0
+    }
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(place)
+    }
+    place()
+    document.addEventListener('scroll', schedule, { passive: true, capture: true })
+    window.addEventListener('resize', schedule)
+    const timer = window.setInterval(place, 1000)
+    return () => {
+      document.removeEventListener('scroll', schedule, true)
+      window.removeEventListener('resize', schedule)
+      window.clearInterval(timer)
+      if (frame) cancelAnimationFrame(frame)
+    }
+  }, [anchor])
+  return ref
+}
+
+function PageTab({ anchor }: { anchor?: () => DOMRect | null }) {
   const open = useStore((s) => s.open)
   const toggle = useStore((s) => s.toggle)
   const flags = useStore((s) => s.flags)
   const loading = useStore((s) => s.loading)
   const needsAccess = useStore((s) => s.needsAccess)
   const doc = useStore((s) => s.doc)
+  const ref = usePageTab(anchor)
 
   const count = flags.length
   const label = needsAccess
@@ -81,35 +136,45 @@ function Launcher() {
       : `SparePage: ${count} print issue${count === 1 ? '' : 's'}`
 
   return (
-    <motion.button
-      type="button"
-      onClick={toggle}
-      aria-label={label}
-      aria-expanded={open}
-      title={label}
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
-      transition={{ duration: 0.12, ease: EASE_OUT }}
-      className="pointer-events-auto relative grid h-11 w-11 place-items-center rounded-full border border-leaf-200 bg-white shadow-lift focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-leaf-600"
+    <div
+      ref={ref}
+      className="pointer-events-none fixed left-0 top-0 z-[2147483000] font-sans text-bark-900 antialiased"
+      style={{ visibility: 'hidden', willChange: 'transform' }}
     >
-      <img src={logoUrl()} alt="" className="h-6 w-6" />
-      {!needsAccess && doc && (
-        <span
-          className={`absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full px-1 text-[11px] font-semibold leading-none text-white ring-2 ring-white ${
-            count === 0 ? 'bg-leaf-600' : 'bg-clay-600'
-          }`}
-          aria-hidden
-        >
-          {count === 0 ? '✓' : count}
-        </span>
-      )}
-      {needsAccess && (
-        <span
-          className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full bg-bark-700/40 ring-2 ring-white"
-          aria-hidden
-        />
-      )}
-    </motion.button>
+      {/* While the panel is open it has its own close button, so the tab steps aside. */}
+      <AnimatePresence>
+        {!open && (
+          <motion.button
+            key="tab"
+            type="button"
+            onClick={toggle}
+            aria-label={label}
+            aria-expanded={open}
+            title={label}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, transition: { duration: 0.1 } }}
+            whileHover={{ x: 2 }}
+            whileTap={{ scale: 0.96 }}
+            transition={{ duration: 0.12, ease: EASE_OUT }}
+            className="pointer-events-auto flex h-16 w-8 flex-col items-center justify-center gap-1.5 rounded-r-xl border border-l-0 border-leaf-200 bg-white shadow-lift focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-leaf-600"
+          >
+            <img src={logoUrl()} alt="" className="h-5 w-5" />
+            {!needsAccess && doc && (
+              <span
+                className={`grid h-4 min-w-4 place-items-center rounded-full px-1 text-[10px] font-semibold leading-none text-white ${
+                  count === 0 ? 'bg-leaf-600' : 'bg-clay-600'
+                }`}
+                aria-hidden
+              >
+                {count === 0 ? '✓' : count > 9 ? '9+' : count}
+              </span>
+            )}
+            {needsAccess && <span className="h-2.5 w-2.5 rounded-full bg-bark-700/40" aria-hidden />}
+          </motion.button>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }
 
@@ -139,7 +204,7 @@ function Panel() {
       exit={{ opacity: 0, scale: 0.98, y: 4, transition: { duration: 0.12, ease: 'easeIn' } }}
       transition={{ duration: 0.18, ease: EASE_OUT }}
       style={{ transformOrigin: 'bottom right' }}
-      className="pointer-events-auto mb-3 flex max-h-[min(620px,calc(100vh-140px))] w-[360px] flex-col overflow-hidden rounded-2xl border border-leaf-100 bg-paper shadow-panel"
+      className="pointer-events-auto flex max-h-[min(620px,calc(100vh-140px))] w-[360px] flex-col overflow-hidden rounded-2xl border border-leaf-100 bg-paper shadow-panel"
     >
       <PanelHeader />
       {needsAccess ? (

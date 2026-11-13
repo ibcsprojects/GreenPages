@@ -1,6 +1,6 @@
 // Content script injected into Google Docs. Two jobs:
-//  1. Mount the in-editor overlay: a launcher in the editor's bottom-right corner and an
-//     issue panel that opens over the document (the way Grammarly and LanguageTool work).
+//  1. Mount the in-editor overlay: a small tab on the right edge of the page the reader is on
+//     (it follows them down the document) and an issue panel that opens over the document.
 //  2. Install the print intercept (the eco check before Ctrl/Cmd+P prints).
 //
 // NOTE: we deliberately do not draw inline underlines over the text. Google Docs renders
