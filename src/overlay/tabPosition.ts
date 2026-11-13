@@ -16,7 +16,7 @@ const GAP = 6
 /** Keep the tab clear of the editor's scrollbar. */
 const SCROLLBAR = 18
 /** How far below the top of the view the tab rests, clear of Docs' ruler. */
-const REST_Y = 96
+const REST_Y = 56
 const EDGE = 16
 
 /**

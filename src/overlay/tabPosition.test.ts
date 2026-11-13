@@ -44,7 +44,7 @@ describe('tabPosition', () => {
   it('falls back to the right side of the view when there are no pages', () => {
     const { x, y } = tabPosition(view, [])
     expect(x).toBe(view.right - TAB_W - 18)
-    expect(y).toBe(view.top + 96)
+    expect(y).toBe(view.top + 56)
   })
 
   it('ignores page boxes too small to be a page', () => {

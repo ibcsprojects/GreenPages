@@ -13,7 +13,7 @@ import { logoUrl } from './logo'
 import { panelWidth, tabPosition, PANEL_EDGE, PANEL_W, type Box } from './tabPosition'
 
 /** The tallest the panel gets, and the least it shrinks to in a very short window. */
-const PANEL_MAX = 540
+const PANEL_MAX = 620
 const PANEL_MIN = 260
 
 // Enter: ease-out, under 200ms, transform + opacity only.
