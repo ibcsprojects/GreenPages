@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { tabPosition, TAB_H, TAB_W, type Box } from './tabPosition'
+import { panelWidth, tabPosition, PANEL_MIN_W, PANEL_W, TAB_H, TAB_W, type Box } from './tabPosition'
 
 // A 1200x700 editor and Letter-ish pages, 816 wide and 1056 tall.
 const view: Box = { left: 0, top: 100, right: 1200, bottom: 800 }
@@ -50,5 +50,25 @@ describe('tabPosition', () => {
   it('ignores page boxes too small to be a page', () => {
     const tiny: Box = { left: 10, top: 10, right: 20, bottom: 20 }
     expect(tabPosition(view, [tiny, page(120)]).x).toBe(1008 + 6)
+  })
+})
+
+describe('panelWidth', () => {
+  it('uses the full width when the gutter beside the page is wide enough', () => {
+    const wideView: Box = { left: 0, top: 100, right: 1500, bottom: 800 }
+    expect(panelWidth(wideView, [page(120)])).toBe(PANEL_W) // gutter = 1500 - 24 - 1014 = 462
+  })
+
+  it('shrinks to fit the gutter so it does not cover the page', () => {
+    const v: Box = { left: 0, top: 100, right: 1290, bottom: 800 } // gutter = 1290 - 24 - 1014 = 252
+    expect(panelWidth(v, [page(120)])).toBe(252)
+  })
+
+  it('never goes narrower than the minimum, even when the page leaves no gutter', () => {
+    expect(panelWidth(view, [page(120)])).toBe(PANEL_MIN_W) // view.right 1200: gutter is 162
+  })
+
+  it('uses the full width when no page can be found', () => {
+    expect(panelWidth(view, [])).toBe(PANEL_W)
   })
 })

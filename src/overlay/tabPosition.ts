@@ -9,8 +9,8 @@ export interface Box {
   bottom: number
 }
 
-export const TAB_W = 32
-export const TAB_H = 64
+export const TAB_W = 36
+export const TAB_H = 76
 /** Space between the page edge and the tab. */
 const GAP = 6
 /** Keep the tab clear of the editor's scrollbar. */
@@ -40,6 +40,24 @@ export function tabPosition(view: Box, pages: Box[]): { x: number; y: number } {
   }
   y = Math.max(view.top + EDGE, Math.min(y, view.bottom - TAB_H - EDGE))
   return { x: Math.round(x), y: Math.round(y) }
+}
+
+/** The panel's widest size, and the narrowest it shrinks to. */
+export const PANEL_W = 300
+export const PANEL_MIN_W = 248
+/** Space kept between the panel and the editor's scrollbar. */
+export const PANEL_EDGE = 24
+
+/**
+ * How wide the panel can be and still sit in the empty gutter beside the page, so it doesn't
+ * cover the document. It is at most PANEL_W, and no narrower than PANEL_MIN_W: in a window too
+ * narrow for that, it overlaps the page by the least it can.
+ */
+export function panelWidth(view: Box, pages: Box[]): number {
+  const page = currentPage((view.top + view.bottom) / 2, pages)
+  if (!page) return PANEL_W
+  const gutter = view.right - PANEL_EDGE - (page.right + GAP)
+  return Math.max(PANEL_MIN_W, Math.min(PANEL_W, Math.round(gutter)))
 }
 
 /** The page across the middle of the view, or failing that the one closest to it. */

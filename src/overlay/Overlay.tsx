@@ -10,7 +10,11 @@ import { FlagList } from './components/FlagList'
 import { EcoScore } from './components/EcoScore'
 import { SortMenu } from './components/SortMenu'
 import { logoUrl } from './logo'
-import { tabPosition, type Box } from './tabPosition'
+import { panelWidth, tabPosition, PANEL_EDGE, PANEL_W, type Box } from './tabPosition'
+
+/** The tallest the panel gets, and the least it shrinks to in a very short window. */
+const PANEL_MAX = 540
+const PANEL_MIN = 260
 
 // Enter: ease-out, under 200ms, transform + opacity only.
 const EASE_OUT = [0.16, 1, 0.3, 1] as const
@@ -30,7 +34,7 @@ export function Overlay({ anchor }: { anchor?: () => DOMRect | null }) {
         className="pointer-events-none fixed z-[2147483000] flex flex-col items-end font-sans text-bark-900 antialiased"
         style={{ right: offset.right, bottom: offset.bottom }}
       >
-        <AnimatePresence>{open && <Panel key="panel" />}</AnimatePresence>
+        <AnimatePresence>{open && <Panel key="panel" maxHeight={offset.maxHeight} width={offset.width} />}</AnimatePresence>
       </div>
       <PageTab anchor={anchor} />
     </MotionConfig>
@@ -42,18 +46,29 @@ export function Overlay({ anchor }: { anchor?: () => DOMRect | null }) {
  * bottom-right corner, clear of Docs' own right-hand toolbar. Falls back to the viewport.
  */
 function useEditorCorner(anchor?: () => DOMRect | null) {
-  const [offset, setOffset] = useState({ right: 24, bottom: 24 })
+  // maxHeight keeps the panel's top below Docs' toolbar, and width keeps it in the gutter beside
+  // the page instead of over the text.
+  const [offset, setOffset] = useState({ right: PANEL_EDGE, bottom: 24, maxHeight: PANEL_MAX, width: PANEL_W })
   useEffect(() => {
     if (!anchor) return
     const place = () => {
       const r = anchor()
       if (!r || r.width === 0) return
+      const right = Math.max(16, Math.round(window.innerWidth - r.right + PANEL_EDGE))
+      const bottom = Math.max(16, Math.round(window.innerHeight - r.bottom + 24))
+      const room = window.innerHeight - bottom - Math.max(r.top, 0) - 12
+      const view: Box = { left: r.left, top: r.top, right: r.right, bottom: r.bottom }
       const next = {
-        // 16px for the editor's scrollbar plus 24px of breathing room.
-        right: Math.max(16, Math.round(window.innerWidth - r.right + 40)),
-        bottom: Math.max(16, Math.round(window.innerHeight - r.bottom + 24)),
+        right,
+        bottom,
+        maxHeight: Math.max(PANEL_MIN, Math.min(PANEL_MAX, Math.round(room))),
+        width: panelWidth(view, findPages()),
       }
-      setOffset((cur) => (cur.right === next.right && cur.bottom === next.bottom ? cur : next))
+      setOffset((cur) =>
+        cur.right === next.right && cur.bottom === next.bottom && cur.maxHeight === next.maxHeight && cur.width === next.width
+          ? cur
+          : next,
+      )
     }
     place()
     window.addEventListener('resize', place)
@@ -151,18 +166,18 @@ function PageTab({ anchor }: { anchor?: () => DOMRect | null }) {
             aria-label={label}
             aria-expanded={open}
             title={label}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{ opacity: 0, x: -6 }}
+            animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, transition: { duration: 0.1 } }}
             whileHover={{ x: 2 }}
             whileTap={{ scale: 0.96 }}
             transition={{ duration: 0.12, ease: EASE_OUT }}
-            className="pointer-events-auto flex h-16 w-8 flex-col items-center justify-center gap-1.5 rounded-r-xl border border-l-0 border-leaf-200 bg-white shadow-lift focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-leaf-600"
+            className="pointer-events-auto flex h-[76px] w-9 flex-col items-center justify-center gap-2 rounded-r-2xl border border-l-[3px] border-leaf-200 border-l-leaf-600 bg-white shadow-lift hover:bg-leaf-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-leaf-600"
           >
-            <img src={logoUrl()} alt="" className="h-5 w-5" />
+            <img src={logoUrl()} alt="" className="h-[22px] w-[22px]" />
             {!needsAccess && doc && (
               <span
-                className={`grid h-4 min-w-4 place-items-center rounded-full px-1 text-[10px] font-semibold leading-none text-white ${
+                className={`grid h-5 min-w-5 place-items-center rounded-full px-1 text-[11px] font-semibold leading-none text-white ${
                   count === 0 ? 'bg-leaf-600' : 'bg-clay-600'
                 }`}
                 aria-hidden
@@ -170,7 +185,7 @@ function PageTab({ anchor }: { anchor?: () => DOMRect | null }) {
                 {count === 0 ? '✓' : count > 9 ? '9+' : count}
               </span>
             )}
-            {needsAccess && <span className="h-2.5 w-2.5 rounded-full bg-bark-700/40" aria-hidden />}
+            {needsAccess && <span className="h-3 w-3 rounded-full bg-bark-700/40" aria-hidden />}
           </motion.button>
         )}
       </AnimatePresence>
@@ -178,7 +193,7 @@ function PageTab({ anchor }: { anchor?: () => DOMRect | null }) {
   )
 }
 
-function Panel() {
+function Panel({ maxHeight, width }: { maxHeight: number; width: number }) {
   const setOpen = useStore((s) => s.setOpen)
   const needsAccess = useStore((s) => s.needsAccess)
   const ref = useRef<HTMLDivElement>(null)
@@ -203,8 +218,8 @@ function Panel() {
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.98, y: 4, transition: { duration: 0.12, ease: 'easeIn' } }}
       transition={{ duration: 0.18, ease: EASE_OUT }}
-      style={{ transformOrigin: 'bottom right' }}
-      className="pointer-events-auto flex max-h-[min(620px,calc(100vh-140px))] w-[360px] flex-col overflow-hidden rounded-2xl border border-leaf-100 bg-paper shadow-panel"
+      style={{ transformOrigin: 'bottom right', maxHeight, width }}
+      className="pointer-events-auto flex flex-col overflow-hidden rounded-2xl border border-leaf-100 bg-paper shadow-panel"
     >
       <PanelHeader />
       {needsAccess ? (
@@ -232,13 +247,11 @@ function PanelHeader() {
   const docSource = useStore((s) => s.docSource)
 
   return (
-    <header className="flex items-center gap-2 border-b border-leaf-100 bg-white px-3.5 py-2.5">
-      <img src={logoUrl()} alt="" className="h-6 w-6" />
-      <div className="min-w-0 flex-1 leading-tight">
-        <div className="text-[13px] font-semibold text-bark-900">SparePage</div>
-        <div className="truncate text-[11px] text-bark-700/80">
-          {docSource === 'sample' ? 'Sample document' : 'Print check for this document'}
-        </div>
+    <header className="flex items-center gap-1.5 border-b border-leaf-100 bg-white px-3 py-1.5">
+      <img src={logoUrl()} alt="" className="h-5 w-5" />
+      <div className="min-w-0 flex-1 truncate text-[13px] font-semibold leading-tight text-bark-900">
+        SparePage
+        {docSource === 'sample' && <span className="ml-1.5 font-normal text-bark-700/80">Sample</span>}
       </div>
       {!needsAccess && (
         <>
