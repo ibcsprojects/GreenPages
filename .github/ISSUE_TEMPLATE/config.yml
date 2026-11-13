@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security problem privately
+    url: https://github.com/ibcsprojects/GreenPrint/security/policy
+    about: Please do not open a public issue for a security problem. Email security@sparepage.app.
+  - name: Ask for help
+    url: https://sparepage.app/guide.html
+    about: The guide covers doing the same fixes by hand, or email support@sparepage.app.

@@ -19,7 +19,8 @@ PDF check that works with files from any app).
 | Hard page breaks | A thin divider |
 | Long lists of short bullets | A compact table |
 | Oversized images | Scaled down |
-| Wordy paragraphs | Plain-language rewrite, with every change listed |
+| Wordy paragraphs | Plain-language rewrite: padded phrases and filler words cut, repeated sentences dropped, every change listed |
+| Very long paragraphs (90+ words) | A shorter version that leaves out the least important sentences, marked for review and never part of Apply all |
 | Wide paragraph indents | Pulled back to the margin |
 
 Press Ctrl+P or Cmd+P in a document and SparePage shows the page count and anything
@@ -30,6 +31,7 @@ unfixed before the print dialog opens.
 - **Word file tool** (`site/docx-fix/`): choose a .docx, review the issues, download a fixed copy. It uses the same checks as the extension on Word's document XML (`src/lib/ooxml/`) and runs entirely in the browser. Build it with `npm run site:build`.
 - **Word add-in** (`site/addin/`, notes in `docs/ADDIN.md`): a task pane inside Word with the same checks. Try it with `npm run addin:dev`.
 - **PDF check** (`site/pdf-check/`): finds blank and ink-heavy pages in any PDF.
+- **Text checker** (home page, `src/web/home.ts`): paste text and see the shorter version and every change, using the same rewriter as the extension.
 
 ## Install
 
@@ -70,6 +72,11 @@ CI runs the typecheck, tests and build on every pull request. How the pieces fit
 ## Licence
 
 [MIT](LICENSE)
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to run it and the ground rules, and
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## Security and support
 

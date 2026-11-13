@@ -1,0 +1,42 @@
+name: Bug report
+description: Something in SparePage did not work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping. Please do not paste private document text. A short made-up example that shows the problem is best.
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where did it happen?
+      options:
+        - Chrome extension in Google Docs
+        - Word add-in
+        - Word file tool (website)
+        - PDF check (website)
+        - Text checker on the home page
+        - Somewhere else on the website
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. Open a document with...\n2. Click..."
+  - type: input
+    id: version
+    attributes:
+      label: Version and browser
+      placeholder: "SparePage 0.2.0, Chrome 130 on macOS"
+  - type: textarea
+    id: console
+    attributes:
+      label: Console message (optional)
+      description: For the extension, open chrome://extensions, click "service worker" under SparePage, and copy any line that starts with [SparePage].
