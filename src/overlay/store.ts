@@ -14,6 +14,8 @@ interface OverlayState {
 
   doc: DocModel | null
   flags: Flag[]
+  /** The most issues seen at once in this session. The progress ring measures against it. */
+  peakFlags: number
   settings: Settings
   loading: boolean
   /** UI-only ordering of the flag list. Not sent to the worker. */
@@ -27,6 +29,11 @@ interface OverlayState {
   docSource: 'live' | 'sample' | null
   /** The user hasn't connected SparePage to Google Docs yet. */
   needsAccess: boolean
+  /** A fix was just applied, so the panel offers a way back (version history). */
+  justApplied: boolean
+  dismissApplied: () => void
+  /** Open Docs' version history, where every earlier version of the document can be restored. */
+  openHistory: () => void
   /** A heads-up from the worker (e.g. couldn't open the doc), or null. */
   notice: string | null
   /** The last operation's error message, shown as a banner until the next action. */
@@ -48,7 +55,7 @@ interface OverlayState {
   updateSettings: (s: Partial<Settings>) => Promise<void>
 }
 
-type SetState = (p: Partial<OverlayState>) => void
+type SetState = (p: Partial<OverlayState> | ((s: OverlayState) => Partial<OverlayState>)) => void
 
 /** How the host page scrolls to a flag: Docs' Find in a live doc, the demo's own view. */
 type RevealHandler = (text: string, fraction: number) => void
@@ -57,10 +64,18 @@ export function setRevealHandler(fn: RevealHandler): void {
   revealHandler = fn
 }
 
+/** How the host page opens version history. Only a live Google Doc has one. */
+let historyHandler: (() => void) | null = null
+export function setHistoryHandler(fn: () => void): void {
+  historyHandler = fn
+}
+export const canOpenHistory = (): boolean => historyHandler !== null
+
 function applyState(set: SetState, msg: Extract<Msg, { type: 'STATE' }>) {
-  set({
+  set((s) => ({
     doc: msg.doc,
     flags: msg.flags,
+    peakFlags: Math.max(s.peakFlags, msg.flags.length),
     settings: msg.settings,
     pages: msg.pages ?? 0,
     pagesExact: msg.pagesExact ?? false,
@@ -69,7 +84,7 @@ function applyState(set: SetState, msg: Extract<Msg, { type: 'STATE' }>) {
     notice: msg.notice ?? null,
     error: null,
     loading: false,
-  })
+  }))
 }
 
 /**
@@ -89,12 +104,16 @@ export const useStore = create<OverlayState>((set, get) => ({
 
   doc: null,
   flags: [],
+  peakFlags: 0,
   settings: { ...DEFAULT_SETTINGS },
   loading: true,
   pages: 0,
   pagesExact: false,
   docSource: null,
   needsAccess: false,
+  justApplied: false,
+  dismissApplied: () => set({ justApplied: false }),
+  openHistory: () => historyHandler?.(),
   notice: null,
   error: null,
   busy: {},
@@ -142,6 +161,7 @@ export const useStore = create<OverlayState>((set, get) => ({
     set({ busy: { ...get().busy, [flagId]: true }, error: null })
     try {
       handleResponse(set, await sendMessage<Msg>({ type: 'APPLY_FLAG', flagId, overrideText }))
+      if (!get().error) set({ justApplied: true })
     } catch (err) {
       // A rejected port (e.g. the worker died mid-edit) must still clear the busy state
       // and tell the user, not leave the card stuck on "Applying…".
@@ -157,6 +177,7 @@ export const useStore = create<OverlayState>((set, get) => ({
     set({ loading: true, error: null })
     try {
       handleResponse(set, await sendMessage<Msg>({ type: 'APPLY_ALL' }))
+      if (!get().error) set({ justApplied: true })
     } catch (err) {
       set({ error: errMessage(err), loading: false })
     }

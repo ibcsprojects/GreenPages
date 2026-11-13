@@ -4,7 +4,7 @@
 // only ever written to the page with textContent, never as HTML.
 
 import { analyzeDoc } from '../lib/analyzer/rules'
-import { analyzeWordiness, condenseWithChanges, type Rewrite } from '../lib/analyzer/condense'
+import { analyzeWordiness, condenseWithChanges, looksEnglish, type Rewrite } from '../lib/analyzer/condense'
 import { SAMPLE_DOC } from '../lib/docModel'
 import { renderFlagCards } from './flagCards'
 import { mountDemos } from './demos'
@@ -89,7 +89,7 @@ function check(input: string, includeTrim: boolean): Result {
           sentencesLeftOut: w.sentencesLeftOut, wordsBefore: w.wordsBefore, wordsAfter: w.wordsAfter,
         }
       }
-    } else if (wordsBefore >= 12) {
+    } else if (wordsBefore >= 12 && looksEnglish(part)) {
       const c = condenseWithChanges(part)
       if (c.text.length < part.length) {
         found = {
@@ -136,9 +136,16 @@ function mountTool(): void {
 
     if (r.pieces.length === 0) {
       const ok = el('div', 'try-empty')
+      const other = !looksEnglish(text)
       ok.append(
-        el('strong', undefined, 'Nothing to cut'),
-        el('span', undefined, 'This text is already tight. SparePage looks for padded phrases, filler words, repeated sentences and very long paragraphs.'),
+        el('strong', undefined, other ? 'English text only' : 'Nothing to cut'),
+        el(
+          'span',
+          undefined,
+          other
+            ? 'The shortener works on English. This looks like another language, so it left the text alone.'
+            : 'This text is already tight. SparePage looks for padded phrases, filler words, repeated sentences and very long paragraphs.',
+        ),
       )
       frag.append(ok)
     } else {

@@ -4,6 +4,7 @@ import {
   condenseLocally,
   condenseWithChanges,
   dropRepeatedSentences,
+  looksEnglish,
   looksVerbose,
   shortenLongText,
   splitSentences,
@@ -180,5 +181,29 @@ describe('sentence-level shortening', () => {
     )!
     expect(w.trimmed).toBe(false)
     expect(w.wordsAfter).toBeLessThan(w.wordsBefore)
+  })
+})
+
+describe('English-only guard', () => {
+  const english =
+    'Our school is really committed to reducing waste and we are actually proud of the extremely good progress that we have made this year.'
+  const spanish =
+    'Nuestra escuela está muy comprometida con la reducción de los residuos y estamos orgullosos del buen progreso que hemos hecho durante este año escolar.'
+  const french =
+    "Notre école est très engagée dans la réduction des déchets et nous sommes fiers des progrès que nous avons réalisés au cours de cette année scolaire."
+
+  it('recognises English and other languages', () => {
+    expect(looksEnglish(english)).toBe(true)
+    expect(looksEnglish(spanish)).toBe(false)
+    expect(looksEnglish(french)).toBe(false)
+  })
+
+  it('treats text too short to judge as English', () => {
+    expect(looksEnglish('Bonjour tout le monde')).toBe(true)
+  })
+
+  it('leaves non-English paragraphs alone', () => {
+    expect(analyzeWordiness(spanish)).toBeNull()
+    expect(analyzeWordiness(english)).not.toBeNull()
   })
 })

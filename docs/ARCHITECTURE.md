@@ -49,8 +49,12 @@ export (exact page count).
   - `docModel.ts`: paragraphs of styled runs (mirrors the Docs API), plus `SAMPLE_DOC`.
   - `analyzer/rules.ts`: the detectors that produce `Flag[]`.
   - `analyzer/condense.ts`: the offline rewriter. A library of plain-language rules (padded
-    phrases, doublets, filler openers) that shortens wordy paragraphs the way pre-LLM
-    writing tools did, and reports each change.
+    phrases, doublets, filler openers and filler words), repeated-sentence removal, and for very
+    long paragraphs an extractive trim that leaves out the least important sentences. It reports
+    each change. A trim is marked `reviewFirst` and is never part of Apply all.
+  - `revealQuery.ts`: picks the short plain-text snippet that "Show" searches for in Docs' Find
+    bar, from the flagged span or, for blank lines, images and page breaks, from the text beside it.
+  - `progress.ts`: the progress ring's score (issues fixed out of the most seen).
   - `docBackend.ts`: `EditBackend`, with `MockDocsBackend` (demo) and `GoogleDocsBackend`
     (Docs API `batchUpdate`).
   - `googleDocs.ts`: OAuth, reading a doc into `DocModel`, writing edits, and the exact

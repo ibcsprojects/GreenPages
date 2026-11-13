@@ -10,7 +10,7 @@
 import { onMessage } from '../lib/messaging'
 import { docIdFromUrl } from '../lib/googleDocs'
 import { mountOverlay, type OverlayController } from '../overlay/mount'
-import { setRevealHandler } from '../overlay/store'
+import { setHistoryHandler, setRevealHandler } from '../overlay/store'
 import { installPrintIntercept } from './printIntercept'
 import { installAutoRescan } from './autoRescan'
 
@@ -41,6 +41,7 @@ if (!overlay) {
 // from a content script: it scrolls to AND highlights the exact text. A proportional
 // scroll is the fallback so *something* reliably happens.
 setRevealHandler((text, fraction) => void revealInDoc(text, fraction))
+setHistoryHandler(() => openVersionHistory())
 
 // Toolbar icon clicked.
 onMessage((msg) => {
@@ -215,15 +216,18 @@ function restoreOnUserInteraction(cleanup: () => void): void {
 
 const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform)
 
-/** Send Ctrl/⌘+F to the page so Docs opens its quick find bar. */
-function dispatchFindShortcut(): void {
+/** Send a Ctrl/⌘ shortcut to the page, the way Docs expects it: to the document and to the
+ *  hidden iframe it routes keystrokes through. */
+function dispatchShortcut(key: string, code: string, keyCode: number, extra: { alt?: boolean; shift?: boolean } = {}): void {
   const opts: KeyboardEventInit = {
-    key: 'f',
-    code: 'KeyF',
-    keyCode: 70,
-    which: 70,
+    key,
+    code,
+    keyCode,
+    which: keyCode,
     ctrlKey: !isMac,
     metaKey: isMac,
+    altKey: extra.alt ?? false,
+    shiftKey: extra.shift ?? false,
     bubbles: true,
     cancelable: true,
   }
@@ -234,6 +238,12 @@ function dispatchFindShortcut(): void {
     iframe?.contentDocument?.dispatchEvent(new KeyboardEvent(type, opts))
   }
 }
+
+/** Open Docs' quick find bar (Ctrl/⌘+F). */
+const dispatchFindShortcut = (): void => dispatchShortcut('f', 'KeyF', 70)
+
+/** Open Docs' version history (Ctrl+Alt+Shift+H, ⌘+Option+Shift+H on a Mac). */
+const openVersionHistory = (): void => dispatchShortcut('h', 'KeyH', 72, { alt: true, shift: true })
 
 /** The Find bar's text input. Prefer the just-focused input (locale-proof), then fall back
  *  to known class selectors. */

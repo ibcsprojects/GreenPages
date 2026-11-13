@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion'
-import { useStore } from './store'
+import { canOpenHistory, useStore } from './store'
 import { FlagList } from './components/FlagList'
 import { EcoScore } from './components/EcoScore'
 import { SortMenu } from './components/SortMenu'
@@ -148,6 +148,7 @@ function Panel() {
         <>
           <EcoScore />
           <Banner />
+          <AppliedNote />
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             <FlagList />
           </div>
@@ -268,6 +269,40 @@ function Banner() {
       }`}
     >
       {message}
+    </div>
+  )
+}
+
+// After a fix, remind people that Docs keeps every earlier version. Docs doesn't treat edits
+// made by an extension as the person's own typing, so Ctrl+Z may not undo them; version
+// history always can.
+function AppliedNote() {
+  const justApplied = useStore((s) => s.justApplied)
+  const error = useStore((s) => s.error)
+  const dismiss = useStore((s) => s.dismissApplied)
+  const openHistory = useStore((s) => s.openHistory)
+  if (!justApplied || error || !canOpenHistory()) return null
+  return (
+    <div
+      role="status"
+      className="flex items-center gap-2 border-b border-leaf-100 bg-leaf-50 px-3.5 py-2 text-[12px] leading-snug text-bark-800"
+    >
+      <span className="min-w-0 flex-1">Applied. Docs keeps every earlier version if you want to go back.</span>
+      <button
+        type="button"
+        onClick={openHistory}
+        className="shrink-0 rounded-md px-2 py-1 font-semibold text-leaf-800 hover:bg-leaf-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-leaf-700"
+      >
+        Version history
+      </button>
+      <button
+        type="button"
+        onClick={dismiss}
+        aria-label="Dismiss"
+        className="shrink-0 rounded-md px-1.5 py-1 text-bark-700/80 hover:bg-leaf-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-leaf-700"
+      >
+        ×
+      </button>
     </div>
   )
 }

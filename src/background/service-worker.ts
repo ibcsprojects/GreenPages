@@ -110,8 +110,11 @@ async function load(s: Session, interactive: boolean): Promise<void> {
 
 /** Turn Chrome / Google sign-in and Docs API errors into something a person can act on. */
 function explainLoadError(raw: string): string {
-  if (/bad client id|invalid_client|client id|OAuth2 not granted/i.test(raw)) {
+  if (/bad client id|invalid_client|client id/i.test(raw)) {
     return `Google sign-in isn't set up for this copy of SparePage. Its extension ID is ${chrome.runtime.id}: register that ID on the Chrome extension OAuth client in Google Cloud, then click Connect again.`
+  }
+  if (/not granted|revoked/i.test(raw)) {
+    return "Google didn't give SparePage access, or access was removed. Click Connect and approve it. If Google says the app isn't verified, your account must be added as a test user until Google finishes its review."
   }
   if (/did not approve|denied|cancel|access_denied/i.test(raw)) {
     return 'Sign-in didn\'t finish. If Google said this app is still being tested, your account must be added as a test user. Then click Connect again.'

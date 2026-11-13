@@ -531,6 +531,28 @@ export function shortenLongText(text: string): { text: string; dropped: string[]
   }
 }
 
+/** Very common English words. English prose is about 40% of them; other languages share few. */
+const ENGLISH_WORDS = new Set(
+  (
+    'the and of to a in is that it for with as on was are this be by at or not have from but they ' +
+    'you we an his her their which will can all would there been has more if one so about what ' +
+    'when who out up into than them some could other these also only its our may then no do like ' +
+    'any after over such how most those very my your just were had i he she him me us what'
+  ).split(' '),
+)
+
+/**
+ * Is `text` English? The shortener's rules are English, so on another language it finds nothing
+ * useful and could only make a mess. Text too short to judge counts as English; the word-count
+ * checks elsewhere already skip it.
+ */
+export function looksEnglish(text: string): boolean {
+  const words = text.toLowerCase().match(/[\p{L}']+/gu) ?? []
+  if (words.length < 12) return true
+  const hits = words.filter((w) => ENGLISH_WORDS.has(w)).length
+  return hits / words.length >= 0.2
+}
+
 /** What the offline rewrite suggests for a paragraph, and how it got there. */
 export interface Wordiness {
   text: string
@@ -551,7 +573,7 @@ export interface Wordiness {
  */
 export function analyzeWordiness(input: string): Wordiness | null {
   const wordsBefore = countWords(input)
-  if (wordsBefore < 12) return null
+  if (wordsBefore < 12 || !looksEnglish(input)) return null
   const base = condenseWithChanges(input)
   let text = base.text
   let changes = base.changes
